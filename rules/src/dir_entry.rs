@@ -24,8 +24,6 @@ lazy_static! {
 }
 
 /// Checks the given directory entry.
-///
-/// Returns `true` if the [`DirEntry`](std::fs::DirEntry) can be processed.
 #[inline]
 pub fn check(entry: &DirEntry) -> Result<CheckOk, CheckError> {
     let entry_type = entry.file_type().map_err(CheckError::DirEntry)?;

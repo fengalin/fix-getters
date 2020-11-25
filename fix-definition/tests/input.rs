@@ -42,6 +42,22 @@ impl MyType {
         self.foo
     }
 
+    const fn get_boolean(&self) -> bool {
+        true
+    }
+
+    const fn get_mute(&self) -> bool {
+        true
+    }
+
+    const fn get_emit_eos(&self) -> bool {
+        true
+    }
+
+    const fn get_do_ts(&self) -> bool {
+        true
+    }
+
     fn get_not_self(other: u64) -> u64 {
         other
     }

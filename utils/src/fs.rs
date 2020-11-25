@@ -1,6 +1,6 @@
 use log::debug;
-use std::path::{Path, PathBuf};
 use rules::dir_entry;
+use std::path::{Path, PathBuf};
 
 use crate::Error;
 

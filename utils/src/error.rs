@@ -1,6 +1,6 @@
+use rules;
 use std::fmt::{self, Display};
 use std::io;
-use rules;
 
 pub enum Error {
     CheckEntry(rules::dir_entry::CheckError),

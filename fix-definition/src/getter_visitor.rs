@@ -1,7 +1,7 @@
 use log::{debug, trace};
+use rules::function::{self, CheckError};
 use std::{cell::RefCell, rc::Rc};
 use syn::visit::{self, Visit};
-use rules::function::{self, CheckError};
 use utils::scope::{FnWithScope, Scope};
 
 #[derive(Debug)]
