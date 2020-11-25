@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+    "rules",
+    "fix-definition",
+    "utils",
+]

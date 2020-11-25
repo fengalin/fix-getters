@@ -1,0 +1,14 @@
+[package]
+name = "fix-getters-utils"
+version = "0.1.0"
+authors = ["François Laignel <fengalin@free.fr>"]
+description = "Utils for fix-getters"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+edition = "2018"
+
+[dependencies]
+log = { version = "0.4", features = ["max_level_debug", "release_max_level_warn"] }
+syn = { version = "1.0", default-features = false, features = ["full", "extra-traits"] }
+
+rules = { package = "fix-getters-rules", path = "../rules" }
