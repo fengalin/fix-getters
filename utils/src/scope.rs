@@ -118,7 +118,7 @@ pub fn item_scope(node: &syn::Item) -> Option<Scope> {
                 let trait_ident = path_ident(&self_ty, &trait_path);
 
                 Some(Scope::TraitImpl {
-                    trait_: trait_ident.to_string(),
+                    trait_: trait_ident,
                     struct_: struct_ident,
                 })
             } else {
@@ -130,7 +130,7 @@ pub fn item_scope(node: &syn::Item) -> Option<Scope> {
     }
 }
 
-fn path_ident(self_ty: &Box<syn::Type>, path: &syn::Path) -> String {
+fn path_ident(self_ty: &syn::Type, path: &syn::Path) -> String {
     if path.segments.is_empty() {
         panic!("no segments in path for self_ty {:#?}", self_ty);
     }

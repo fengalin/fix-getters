@@ -1,4 +1,3 @@
-use rules;
 use std::fmt::{self, Display};
 use std::io;
 

@@ -46,7 +46,7 @@ pub fn check(entry: &DirEntry) -> Result<CheckOk, CheckError> {
         return Ok(CheckOk::SkipUnspecified);
     }
 
-    return Ok(CheckOk::Skip(entry_name.to_string()));
+    Ok(CheckOk::Skip(entry_name.to_string()))
 }
 
 #[derive(Debug)]
