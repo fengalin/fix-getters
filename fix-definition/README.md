@@ -13,7 +13,8 @@ You can install `fix-getters-definition` using `cargo`, which allows invoking it
 like a regular command.
 
 ```
-cargo install --path fix-getters/fix-definition
+cd fix-getters/fix-definition
+cargo install --path ./
 ```
 
 ## Usage
@@ -39,6 +40,17 @@ fix-getters-definition _PROJECT_PATH_ _OUTPUT_PATH_
 The project files won't be changed: modified files will be generated under
 `_OUTPUT_PATH_`. Note however that only the modified files are genereted, so
 you won't be able to run `cargo fmt`.
+
+## Uninstall
+
+By default, `cargo` installs the `fix-getters-definition` executable in
+its `bin` directory. You can get it with:
+
+```
+which cargo
+```
+
+To uninstall `fix-getters-definition`, just remove it from that directory.
 
 ## LICENSE
 
