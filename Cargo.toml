@@ -2,6 +2,6 @@
 
 members = [
     "rules",
-    "fix-definition",
+    "fix-def",
     "utils",
 ]

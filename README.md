@@ -10,7 +10,7 @@ E.g.:
   to remove the `get` semantic.
 - After removing the `get_` prefix, it is a good idea to add a
   `[doc(alias = "get_name")]` so that users can retrive the new name in the
-  crate's documentation. This is particulary helpful for bindings since users
+  crate's documentation. This is particularly helpful for bindings since users
   might be experimented with C code or refer to examples with C code.
   However, the `[doc..]` attribute is only useful in global functions,
   `struct` `impl` or `trait` definition. It's unneeded in `trait` implementations
@@ -23,8 +23,7 @@ This workspace contains the following packages:
 
 - [utils](utils/README.md): functions which are common to the executables.
 - [rules](rules/README.md): rules which are applied during the update process.
-- [fix-definition](fix-definition/README.md): executable which updates the
-  getters defintion.
+- [fix-def](fix-def/README.md): tool which updates the getters definition.
 
 ## LICENSE
 

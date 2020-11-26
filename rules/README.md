@@ -1,6 +1,6 @@
 # fix-getters-rules
 
-This package contains rule definition to be used in `fix-getters` executables.
+This package contains rules definition to be used in `fix-getters` tools.
 
 See the [workspace documentation](../README.md) for more details on `fix-getters`.
 

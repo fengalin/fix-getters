@@ -1,5 +1,5 @@
 [package]
-name = "fix-getters-definition"
+name = "fix-getters-def"
 version = "0.1.0"
 authors = ["François Laignel <fengalin@free.fr>"]
 description = "Fix getters definition by removing the get_ prefix when applicable"

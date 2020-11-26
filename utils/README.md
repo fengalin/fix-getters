@@ -1,7 +1,6 @@
 # fix-getters-utils
 
-This package contains functions which are common to the `fix-getters`
-executables.
+This package contains functions which are common to the `fix-getters` tools.
 
 See the [workspace documentation](../README.md) for more details on `fix-getters`.
 
