@@ -1,7 +1,8 @@
 [workspace]
 
 members = [
-    "rules",
+    "fix-calls",
     "fix-def",
+    "rules",
     "utils",
 ]

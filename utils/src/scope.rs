@@ -7,7 +7,10 @@ use std::{
 
 #[derive(Debug)]
 pub enum Scope {
-    Fn,
+    Const(String),
+    Fn(String),
+    Macro(String),
+    Static(String),
     StructImpl(String),
     Trait(String),
     TraitImpl { trait_: String, struct_: String },
@@ -31,7 +34,10 @@ impl fmt::Display for Scope {
         use Scope::*;
 
         match self {
-            Fn => f.write_str("fn _"),
+            Const(name) => write!(f, "const {}", name),
+            Fn(name) => write!(f, "fn {}", name),
+            Macro(name) => write!(f, "macro! {}", name),
+            Static(name) => write!(f, "static {}", name),
             StructImpl(struct_) => f.write_str(struct_),
             Trait(trait_) => f.write_str(trait_),
             TraitImpl { trait_, struct_ } => write!(f, "impl {} for {}", trait_, struct_),
@@ -80,7 +86,8 @@ impl fmt::Display for FnWithScope {
 
 pub fn item_scope(node: &syn::Item) -> Scope {
     match node {
-        syn::Item::Fn(_) => Scope::Fn,
+        syn::Item::Const(syn::ItemConst { ident, .. }) => Scope::Const(ident.to_string()),
+        syn::Item::Fn(syn::ItemFn { sig, .. }) => Scope::Fn(sig.ident.to_string()),
         syn::Item::Impl(syn::ItemImpl {
             self_ty, trait_, ..
         }) => {
@@ -124,6 +131,14 @@ pub fn item_scope(node: &syn::Item) -> Scope {
                 Scope::StructImpl(struct_ident)
             }
         }
+        syn::Item::Macro(syn::ItemMacro { ident, .. }) => Scope::Macro(
+            ident
+                .as_ref()
+                .map(|ident| ident.to_string())
+                .unwrap_or_else(|| "unnamed".to_string()),
+        ),
+        syn::Item::Macro2(syn::ItemMacro2 { ident, .. }) => Scope::Macro(ident.to_string()),
+        syn::Item::Static(syn::ItemStatic { ident, .. }) => Scope::Static(ident.to_string()),
         syn::Item::Trait(syn::ItemTrait { ident, .. }) => Scope::Trait(ident.to_string()),
         _ => Scope::Unexpected,
     }

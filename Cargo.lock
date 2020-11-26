@@ -67,6 +67,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "fix-getters-calls"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "fix-getters-rules",
+ "fix-getters-utils",
+ "log",
+ "proc-macro2",
+ "stderrlog",
+ "syn",
+]
+
+[[package]]
 name = "fix-getters-def"
 version = "0.1.0"
 dependencies = [

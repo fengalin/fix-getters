@@ -13,6 +13,7 @@ lazy_static! {
     pub static ref RESERVED: HashSet<&'static str> ={
         let mut reserved = HashSet::new();
         reserved.insert("");
+        reserved.insert("impl");
         reserved.insert("loop");
         reserved.insert("mut");
         reserved.insert("optional");
@@ -155,6 +156,29 @@ fn returns_bool(sig: &syn::Signature) -> bool {
     }
 
     false
+}
+
+/// Checks the rules against the given method call.
+pub fn try_rename_getter_call(method_call: &syn::ExprMethodCall) -> Result<RenameOk, RenameError> {
+    use RenameError::*;
+
+    let name = method_call.method.to_string();
+    let suffix = name.strip_prefix("get_");
+
+    let suffix = match suffix {
+        Some(suffix) => suffix,
+        None => return Err(NotAGet),
+    };
+
+    if method_call.turbofish.is_some() {
+        return Err(GenericParams);
+    }
+
+    if !method_call.args.is_empty() {
+        return Err(MultipleArgs);
+    }
+
+    try_rename_getter_suffix(suffix, || try_substitute(suffix).is_some())
 }
 
 /// Suffix renaming successfull Result.

@@ -1,0 +1,18 @@
+[package]
+name = "fix-getters-calls"
+version = "0.1.0"
+authors = ["François Laignel <fengalin@free.fr>"]
+description = "Fix getters call sites by removing the get_ prefix when applicable"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+edition = "2018"
+
+[dependencies]
+clap = "2.33"
+log = { version = "0.4", features = ["max_level_debug", "release_max_level_debug"] }
+proc-macro2 = { version = "1.0", features = ["span-locations"] }
+stderrlog = "0.5"
+syn = { version = "1.0", default-features = false, features = ["parsing", "full", "extra-traits", "visit"] }
+
+rules = { package = "fix-getters-rules", path = "../rules" }
+utils = { package = "fix-getters-utils", path = "../utils" }
