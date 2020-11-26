@@ -1,5 +1,5 @@
-use log::{debug, trace};
-use rules::function::{self, CheckError};
+use log::{debug, trace, warn};
+use rules::function::{self, RenameError};
 use std::{cell::RefCell, rc::Rc};
 use syn::visit::{self, Visit};
 use utils::scope::{FnWithScope, Scope};
@@ -32,10 +32,10 @@ impl GetterVisitor {
             _ => return,
         };
 
-        let filter_ok = match function::check(sig) {
+        let filter_ok = match function::try_rename_getter(sig) {
             Ok(filter_ok) => filter_ok,
             Err(err) => match err {
-                CheckError::NotAGetFn => {
+                RenameError::NotAGet => {
                     trace!("Getter visitor skipping {}: {}", fn_with_scope, err);
                     return;
                 }
@@ -46,16 +46,24 @@ impl GetterVisitor {
             },
         };
 
-        let was_fixed = filter_ok.is_fixed();
-        let new_name = filter_ok.into_inner();
-        if was_fixed {
-            debug!("Getter visitor will fix {} as {}", fn_with_scope, new_name);
+        if filter_ok.is_substituted() {
+            warn!(
+                "Getter visitor: will substitute {} with {}",
+                fn_with_scope,
+                filter_ok.inner()
+            );
+        } else if filter_ok.is_fixed() {
+            debug!(
+                "Getter visitor: will fix {} as {}",
+                fn_with_scope,
+                filter_ok.inner()
+            );
         }
 
         self.renamable_getters.push(RenamableGetter {
             line_nb: sig.ident.span().start().line - 1,
             name: fn_with_scope.fn_().to_string(),
-            new_name,
+            new_name: filter_ok.into_inner(),
             needs_doc_alias,
         });
     }

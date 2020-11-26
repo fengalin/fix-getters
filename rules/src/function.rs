@@ -58,16 +58,68 @@ lazy_static! {
     };
 }
 
+/// Applies getter name rules to the given getter suffix.
+///
+/// Suffix in the form of `get_suffix`.
+///
+/// The `is_bool_getter` function will be executed if it is
+/// necessary to check whether the getter returns exactly a bool.
+#[inline]
+pub fn try_rename_getter_suffix<F>(suffix: &str, is_bool_getter: F) -> Result<RenameOk, RenameError>
+where
+    F: FnOnce() -> bool,
+{
+    if RESERVED.contains(suffix) {
+        return Err(RenameError::Reserved);
+    }
+
+    if is_bool_getter() {
+        return Ok(rename_bool_getter(suffix));
+    }
+
+    let splits: Vec<&str> = suffix.splitn(2, '_').collect();
+    if splits.len() > 1 && PREFIX_TO_POSTFIX.contains(splits[0]) {
+        Ok(RenameOk::Fixed(format!("{}_{}", splits[1], splits[0])))
+    } else {
+        Ok(RenameOk::Unchanged(suffix.to_string()))
+    }
+}
+
+/// Applies boolean getter name rules.
+///
+/// Suffix in the form of `get_suffix`.
+#[inline]
+pub fn rename_bool_getter(suffix: &str) -> RenameOk {
+    try_substitute(suffix)
+        .map(RenameOk::Subsituted)
+        .unwrap_or_else(|| RenameOk::Fixed(format!("is_{}", suffix)))
+}
+
+/// Attempts to apply substitutions to the given boolean getter suffix.
+///
+/// Suffix in the form of `get_suffix`.
+#[inline]
+pub fn try_substitute(suffix: &str) -> Option<String> {
+    let splits: Vec<&str> = suffix.splitn(2, '_').collect();
+    BOOL_PREFIX_MAP.get(splits[0]).map(|substitute| {
+        if splits.len() == 1 {
+            substitute.to_string()
+        } else {
+            format!("{}_{}", substitute, splits[1])
+        }
+    })
+}
+
 /// Checks the rules against the given function signature.
-pub fn check(sig: &syn::Signature) -> Result<CheckOk, CheckError> {
-    use CheckError::*;
+pub fn try_rename_getter(sig: &syn::Signature) -> Result<RenameOk, RenameError> {
+    use RenameError::*;
 
     let name = sig.ident.to_string();
-    let new_name = name.strip_prefix("get_");
+    let suffix = name.strip_prefix("get_");
 
-    let new_name = match new_name {
-        Some(new_name) => new_name,
-        None => return Err(NotAGetFn),
+    let suffix = match suffix {
+        Some(suffix) => suffix,
+        None => return Err(NotAGet),
     };
 
     let syn::Generics { params, .. } = &sig.generics;
@@ -85,34 +137,10 @@ pub fn check(sig: &syn::Signature) -> Result<CheckOk, CheckError> {
         None => return Err(NoArgs),
     }
 
-    if RESERVED.contains(new_name) {
-        return Err(Reserved);
-    }
-
-    if returns_bool(sig) {
-        let splits: Vec<&str> = new_name.splitn(2, '_').collect();
-        let new_name = match BOOL_PREFIX_MAP.get(splits[0]) {
-            Some(substitute) => {
-                if splits.len() == 1 {
-                    substitute.to_string()
-                } else {
-                    format!("{}_{}", substitute, splits[1])
-                }
-            }
-            None => format!("is_{}", new_name),
-        };
-
-        return Ok(CheckOk::Fixed(new_name));
-    }
-
-    let splits: Vec<&str> = new_name.splitn(2, '_').collect();
-    if splits.len() > 1 && PREFIX_TO_POSTFIX.contains(splits[0]) {
-        Ok(CheckOk::Fixed(format!("{}_{}", splits[1], splits[0])))
-    } else {
-        Ok(CheckOk::Unchanged(new_name.to_string()))
-    }
+    try_rename_getter_suffix(suffix, || returns_bool(sig))
 }
 
+#[inline]
 fn returns_bool(sig: &syn::Signature) -> bool {
     if let syn::ReturnType::Type(_, type_) = &sig.output {
         if let syn::Type::Path(syn::TypePath { path, .. }) = type_.as_ref() {
@@ -129,49 +157,69 @@ fn returns_bool(sig: &syn::Signature) -> bool {
     false
 }
 
+/// Suffix renaming successfull Result.
 #[derive(Debug)]
-pub enum CheckOk {
+#[non_exhaustive]
+pub enum RenameOk {
+    /// Suffix was fixed to comply to rules. Ex. `get_active` -> `is_active`.
     Fixed(String),
+    /// Suffix was fixed with substitution. Ex. `get_mute` -> `is_muted`.
+    Subsituted(String),
+    /// Suffix is unchanged.
     Unchanged(String),
 }
 
-impl CheckOk {
+impl RenameOk {
     pub fn into_inner(self) -> String {
-        use CheckOk::*;
         match self {
-            Fixed(inner) => inner,
-            Unchanged(inner) => inner,
+            RenameOk::Fixed(inner) | RenameOk::Subsituted(inner) | RenameOk::Unchanged(inner) => {
+                inner
+            }
+        }
+    }
+
+    pub fn inner(&self) -> &str {
+        match self {
+            RenameOk::Fixed(inner) | RenameOk::Subsituted(inner) | RenameOk::Unchanged(inner) => {
+                inner.as_str()
+            }
         }
     }
 
     pub fn is_fixed(&self) -> bool {
-        matches!(self, CheckOk::Fixed(_))
+        matches!(self, RenameOk::Fixed(_))
+    }
+
+    pub fn is_substituted(&self) -> bool {
+        matches!(self, RenameOk::Subsituted(_))
     }
 }
 
+/// Suffix renaming failure Result.
 #[derive(Debug)]
-pub enum CheckError {
+#[non_exhaustive]
+pub enum RenameError {
     GenericParams,
     MultipleArgs,
-    NotAGetFn,
+    NotAGet,
     NoArgs,
     OneNoneSelfArg,
     Reserved,
 }
 
-impl Display for CheckError {
+impl Display for RenameError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        use CheckError::*;
+        use RenameError::*;
 
         match self {
             GenericParams => f.write_str("generic parameters"),
             MultipleArgs => f.write_str("multiple arguments"),
-            NotAGetFn => f.write_str("not a get function"),
+            NotAGet => f.write_str("not a get function"),
             NoArgs => f.write_str("no arguments"),
             OneNoneSelfArg => f.write_str("none `self` one argument"),
-            Reserved => f.write_str("reserved"),
+            Reserved => f.write_str("name is reserved"),
         }
     }
 }
 
-impl Error for CheckError {}
+impl Error for RenameError {}
