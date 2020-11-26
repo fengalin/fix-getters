@@ -31,12 +31,17 @@ pub(crate) fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Erro
         None => path,
     };
 
+    let mut renamable_getters = getter_visitor.renamable_getters.iter();
+    let mut pending_rename = renamable_getters.next();
+    if pending_rename.is_none() {
+        // Nothing to do for this file
+        return Ok(());
+    }
+
     // Write result
     let f = fs::File::create(output_path).map_err(Error::WriteFile)?;
     let mut writer = std::io::BufWriter::new(f);
 
-    let mut renamable_getters = getter_visitor.renamable_getters.iter();
-    let mut pending_rename = renamable_getters.next();
     for (line_nb, line) in source_code.lines().enumerate() {
         if let Some(pr) = pending_rename {
             if line_nb == pr.line_nb {
