@@ -39,7 +39,9 @@ where
                 Some(output_path) => {
                     let output_path = output_path.join(entry.file_name());
                     if is_dir {
-                        std::fs::create_dir(&output_path).map_err(Error::CreateDir)?;
+                        std::fs::create_dir(&output_path).map_err(|err| {
+                            Error::CreateDir(output_path.to_string_lossy().to_string(), err)
+                        })?;
                     }
                     Some(output_path)
                 }

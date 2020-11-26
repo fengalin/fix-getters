@@ -4,7 +4,7 @@ use fix::fix;
 mod getter_visitor;
 pub(crate) use getter_visitor::GetterVisitor;
 
-use log::error;
+use log::{error, info};
 use std::path::PathBuf;
 use std::process;
 use utils::{fs, Error};
@@ -15,10 +15,16 @@ fn main() {
         .author(clap::crate_authors!())
         .about(clap::crate_description!())
         .arg(
-            clap::Arg::with_name("debug")
-                .short("d")
-                .long("debug")
-                .help("Show debug logs"),
+            clap::Arg::with_name("quiet")
+                .short("q")
+                .long("quiet")
+                .help("Run silently"),
+        )
+        .arg(
+            clap::Arg::with_name("verbose")
+                .short("v")
+                .long("verbose")
+                .help("Show detailed logs"),
         )
         .arg(
             clap::Arg::with_name("PATH")
@@ -29,7 +35,15 @@ fn main() {
         .get_matches();
 
     stderrlog::new()
-        .verbosity(if m.is_present("debug") { 3 } else { 1 })
+        .verbosity(if m.is_present("verbose") {
+            4
+        } else {
+            if m.is_present("quiet") {
+                1
+            } else {
+                2
+            }
+        })
         .init()
         .unwrap();
 
@@ -63,8 +77,13 @@ fn main() {
 
     // Traverse the given crate tree following the rules defined in crate `rules`
     // and apply `fix` on elligible files.
+    info!(
+        "Processing {}",
+        path.to_str().expect("was a &str initially"),
+    );
     if let Err(error) = fs::traverse(&path, &output_path, &fix) {
         let _ = error!("{}", error);
         process::exit(1);
     }
+    info!("Done {}", path.to_str().expect("was a &str initially"));
 }

@@ -8,7 +8,7 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
-log = { version = "0.4", features = ["max_level_debug", "release_max_level_warn"] }
+log = "0.4"
 syn = { version = "1.0", default-features = false, features = ["full", "extra-traits"] }
 
 rules = { package = "fix-getters-rules", path = "../rules" }

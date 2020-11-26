@@ -3,7 +3,7 @@ use std::io;
 
 pub enum Error {
     CheckEntry(rules::dir_entry::CheckError),
-    CreateDir(io::Error),
+    CreateDir(String, io::Error),
     ReadDir(io::Error),
     ReadEntry(io::Error),
     ReadFile(io::Error),
@@ -21,7 +21,7 @@ impl Display for Error {
 
         match self {
             CheckEntry(error) => write!(f, "unable to check dir entry: {}", error),
-            CreateDir(error) => write!(f, "unable to create dir: {}", error),
+            CreateDir(name, error) => write!(f, "unable to create dir {}: {}", name, error),
             ReadDir(error) => write!(f, "unable to read dir: {}", error),
             ReadEntry(error) => write!(f, "unable to read dir entry: {}", error),
             ReadFile(error) => write!(f, "unable to read file: {}", error),
