@@ -77,7 +77,7 @@ pub fn check(sig: &syn::Signature) -> Result<CheckOk, CheckError> {
     }
 
     if sig.inputs.len() > 1 {
-        return Err(MutlipleArgs);
+        return Err(MultipleArgs);
     }
 
     match sig.inputs.first() {
@@ -118,7 +118,7 @@ fn returns_bool(sig: &syn::Signature) -> bool {
     if let syn::ReturnType::Type(_, type_) = &sig.output {
         if let syn::Type::Path(syn::TypePath { path, .. }) = type_.as_ref() {
             if path.segments.len() == 1 {
-                if let Some(syn::PathSegment { ident, .. }) = &path.segments.last() {
+                if let Some(syn::PathSegment { ident, .. }) = &path.segments.first() {
                     if ident == "bool" {
                         return true;
                     }
@@ -153,7 +153,7 @@ impl CheckOk {
 #[derive(Debug)]
 pub enum CheckError {
     GenericParams,
-    MutlipleArgs,
+    MultipleArgs,
     NotAGetFn,
     NoArgs,
     OneNoneSelfArg,
@@ -166,7 +166,7 @@ impl Display for CheckError {
 
         match self {
             GenericParams => f.write_str("generic parameters"),
-            MutlipleArgs => f.write_str("multiple arguments"),
+            MultipleArgs => f.write_str("multiple arguments"),
             NotAGetFn => f.write_str("not a get function"),
             NoArgs => f.write_str("no arguments"),
             OneNoneSelfArg => f.write_str("none `self` one argument"),
