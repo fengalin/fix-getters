@@ -14,7 +14,6 @@ lazy_static! {
         let mut reserved = HashSet::new();
         reserved.insert("");
         reserved.insert("loop");
-        reserved.insert("main");
         reserved.insert("mut");
         reserved.insert("optional");
         reserved.insert("owned");
