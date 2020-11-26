@@ -1,12 +1,11 @@
 use log::{debug, trace, warn};
 use rules::function::{self, RenameError};
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use syn::visit::{self, Visit};
 use utils::scope::{FnWithScope, Scope};
 
 #[derive(Debug)]
-pub(crate) struct RenamableGetter {
-    pub(crate) line_nb: usize,
+pub(crate) struct RenamableDef {
     pub(crate) name: String,
     pub(crate) new_name: String,
     pub(crate) needs_doc_alias: bool,
@@ -15,7 +14,7 @@ pub(crate) struct RenamableGetter {
 #[derive(Default)]
 pub(crate) struct GetterVisitor {
     scope_stack: Vec<Rc<RefCell<Scope>>>,
-    pub(crate) renamable_getters: Vec<RenamableGetter>,
+    pub(crate) renamable_lines: HashMap<usize, RenamableDef>,
 }
 
 impl GetterVisitor {
@@ -60,12 +59,16 @@ impl GetterVisitor {
             );
         }
 
-        self.renamable_getters.push(RenamableGetter {
-            line_nb: sig.ident.span().start().line - 1,
+        let line = sig.ident.span().start().line - 1;
+        let rd = RenamableDef {
             name: fn_with_scope.fn_().to_string(),
             new_name: filter_ok.into_inner(),
             needs_doc_alias,
-        });
+        };
+
+        if self.renamable_lines.insert(line, rd).is_some() {
+            panic!("Found more than one getter definition @ {}", line);
+        }
     }
 }
 
