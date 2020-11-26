@@ -37,12 +37,10 @@ fn main() {
     stderrlog::new()
         .verbosity(if m.is_present("verbose") {
             4
+        } else if m.is_present("quiet") {
+            1
         } else {
-            if m.is_present("quiet") {
-                1
-            } else {
-                2
-            }
+            2
         })
         .init()
         .unwrap();
