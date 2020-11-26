@@ -7,7 +7,7 @@ use std::{
 
 #[derive(Debug)]
 pub enum Scope {
-    Module,
+    Fn,
     StructImpl(String),
     Trait(String),
     TraitImpl { trait_: String, struct_: String },
@@ -16,7 +16,7 @@ pub enum Scope {
 
 impl Default for Scope {
     fn default() -> Self {
-        Scope::Module
+        Scope::Unexpected
     }
 }
 
@@ -31,11 +31,11 @@ impl fmt::Display for Scope {
         use Scope::*;
 
         match self {
-            Module => Ok(()),
-            StructImpl(struct_) => write!(f, "{}", struct_),
-            Trait(trait_) => write!(f, "{}", trait_),
+            Fn => f.write_str("fn _"),
+            StructImpl(struct_) => f.write_str(struct_),
+            Trait(trait_) => f.write_str(trait_),
             TraitImpl { trait_, struct_ } => write!(f, "impl {} for {}", trait_, struct_),
-            Unexpected => write!(f, "**Unexpected**"),
+            Unexpected => f.write_str("**Unexpected**"),
         }
     }
 }
@@ -68,20 +68,19 @@ impl fmt::Display for FnWithScope {
         use Scope::*;
 
         match &*self.scope.borrow() {
-            Module => write!(f, "{}", self.fn_),
             StructImpl(struct_) => write!(f, "{}::{}", struct_, self.fn_),
             Trait(trait_) => write!(f, "{}::{}", trait_, self.fn_),
             TraitImpl { trait_, struct_ } => {
                 write!(f, "{}::{} impl for {}", trait_, self.fn_, struct_)
             }
-            Unexpected => write!(f, "**Unexpected**"),
+            other => Scope::fmt(other, f),
         }
     }
 }
 
-pub fn item_scope(node: &syn::Item) -> Option<Scope> {
+pub fn item_scope(node: &syn::Item) -> Scope {
     match node {
-        syn::Item::Fn(_) => Some(Scope::Module),
+        syn::Item::Fn(_) => Scope::Fn,
         syn::Item::Impl(syn::ItemImpl {
             self_ty, trait_, ..
         }) => {
@@ -117,16 +116,16 @@ pub fn item_scope(node: &syn::Item) -> Option<Scope> {
             if let Some((_, trait_path, _)) = trait_ {
                 let trait_ident = path_ident(&self_ty, &trait_path);
 
-                Some(Scope::TraitImpl {
+                Scope::TraitImpl {
                     trait_: trait_ident,
                     struct_: struct_ident,
-                })
+                }
             } else {
-                Some(Scope::StructImpl(struct_ident))
+                Scope::StructImpl(struct_ident)
             }
         }
-        syn::Item::Trait(syn::ItemTrait { ident, .. }) => Some(Scope::Trait(ident.to_string())),
-        _ => None,
+        syn::Item::Trait(syn::ItemTrait { ident, .. }) => Scope::Trait(ident.to_string()),
+        _ => Scope::Unexpected,
     }
 }
 

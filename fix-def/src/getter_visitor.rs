@@ -14,13 +14,23 @@ pub(crate) struct RenamableGetter {
 
 #[derive(Default)]
 pub(crate) struct GetterVisitor {
-    current_scope: Rc<RefCell<Scope>>,
+    scope_stack: Vec<Rc<RefCell<Scope>>>,
     pub(crate) renamable_getters: Vec<RenamableGetter>,
 }
 
 impl GetterVisitor {
     pub(crate) fn process(&mut self, sig: &syn::Signature) {
-        let fn_with_scope = FnWithScope::new(&sig.ident, &self.current_scope);
+        let fn_with_scope = FnWithScope::new(
+            &sig.ident,
+            &self.scope_stack.last().expect("empty scope stack"),
+        );
+
+        use Scope::*;
+        let needs_doc_alias = match *fn_with_scope.scope() {
+            StructImpl(_) | Trait(_) => true,
+            TraitImpl { .. } => false,
+            _ => return,
+        };
 
         let filter_ok = match function::check(sig) {
             Ok(filter_ok) => filter_ok,
@@ -34,13 +44,6 @@ impl GetterVisitor {
                     return;
                 }
             },
-        };
-
-        use Scope::*;
-        let needs_doc_alias = match *fn_with_scope.scope() {
-            Module | StructImpl(_) | Trait(_) => true,
-            TraitImpl { .. } => false,
-            Unexpected => panic!("unexpected scope for function {:#?}", sig),
         };
 
         let was_fixed = filter_ok.is_fixed();
@@ -60,11 +63,9 @@ impl GetterVisitor {
 
 impl<'ast> Visit<'ast> for GetterVisitor {
     fn visit_item(&mut self, node: &'ast syn::Item) {
-        if let Some(new_scope) = utils::scope::item_scope(node) {
-            self.current_scope = new_scope.into();
-        }
-
+        self.scope_stack.push(utils::scope::item_scope(node).into());
         visit::visit_item(self, node);
+        self.scope_stack.pop();
     }
 
     fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
