@@ -71,6 +71,30 @@ impl MyType {
     }
 }
 
+macro_rules! get_from_macro(
+    ($name:ident) => {
+        impl $name {
+            fn get_from_macro(&self) -> u64 {
+                self.foo
+            }
+
+            fn get_42(&self) -> bool {
+                self.foo == 42u64
+            }
+
+            fn get_complexe(&self) -> (u64, bool) {
+                (self.foo, self.foo == 42u64)
+            }
+
+            fn get_param_from_macro<T: From<u64>>(&self) -> (T, bool) {
+                (self.foo.into(), self.foo == 42u64)
+            }
+        }
+    }
+);
+
+get_from_macro!(MyType);
+
 trait MyTrait {
     fn get_trait_no_impl(&self) -> u64;
 

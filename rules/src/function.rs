@@ -170,6 +170,16 @@ pub enum ReturnsBool {
     Maybe,
 }
 
+impl From<bool> for ReturnsBool {
+    fn from(returns_bool: bool) -> Self {
+        if returns_bool {
+            ReturnsBool::True
+        } else {
+            ReturnsBool::False
+        }
+    }
+}
+
 /// Checks the rules against the given function signature.
 pub fn try_rename_getter_def(sig: &syn::Signature) -> Result<RenameOk, RenameError> {
     let get_fn = GetFunction::try_from(sig.ident.to_string())?;

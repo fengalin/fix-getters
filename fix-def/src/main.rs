@@ -4,6 +4,8 @@ use fix::fix;
 mod getter_visitor;
 pub(crate) use getter_visitor::GetterVisitor;
 
+pub(crate) mod macro_parser;
+
 use log::{error, info};
 use std::path::PathBuf;
 use std::process;
