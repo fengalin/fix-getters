@@ -1,84 +1,54 @@
 use log::{debug, trace, warn};
-use rules::function::{self, RenameError};
+use rules::function::{self, RenameError, RenameOk, ReturnsBool};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use syn::visit::{self, Visit};
 use utils::scope::Scope;
 
-#[derive(Debug)]
-pub(crate) struct RenamableCall {
-    pub(crate) name: String,
-    pub(crate) new_name: String,
-}
+use crate::macro_parser::GetterCalls;
 
 #[derive(Default)]
 pub(crate) struct GetterVisitor {
     scope_stack: Vec<Rc<RefCell<Scope>>>,
-    pub(crate) renamable_lines: HashMap<usize, Vec<RenamableCall>>,
+    pub(crate) renamable_lines: HashMap<usize, Vec<RenameOk>>,
 }
 
 impl GetterVisitor {
-    pub(crate) fn process(&mut self, method_call: &syn::ExprMethodCall) {
+    pub(crate) fn process(&mut self, rename_res: Result<RenameOk, RenameError>, line_idx: usize) {
         let scope = self.scope_stack.last().expect("empty scope stack").borrow();
-        let method = method_call.method.to_string();
 
-        println!("{} {}", scope, method);
-
-        let filter_ok = match function::try_rename_getter_call(method_call) {
-            Ok(filter_ok) => filter_ok,
+        let rename = match rename_res {
+            Ok(rename) => rename,
             Err(err) => match err {
-                RenameError::NotAGet => {
-                    trace!("Getter visitor skipping {} in {}: {}", method, scope, err);
+                RenameError::GetFunction(err) => {
+                    trace!("Getter visitor in {}, skipping {}", scope, err);
                     return;
                 }
                 _ => {
-                    debug!("Getter visitor skipping {} in {}: {}", method, scope, err);
+                    debug!("Getter visitor in {}, skipping {}", scope, err);
                     return;
                 }
             },
         };
 
-        if filter_ok.is_substituted() {
-            if filter_ok.inner() != &method[4..] {
-                warn!(
-                    "Getter visitor: will substitute {} with {} in {}",
-                    method,
-                    filter_ok.inner(),
-                    scope,
-                );
+        if rename.is_substitute() {
+            if rename.new_name() != &rename.name()[4..] {
+                warn!("Getter visitor in {}: {}", scope, rename);
             } else {
-                // Substitute is same as suffix => don't advertise as substitute
-                debug!(
-                    "Getter visitor: will fix {} as {} in {}",
-                    method,
-                    filter_ok.inner(),
-                    scope,
-                );
+                // Substitute is same as fix => don't warn as substitute
+                debug!("Getter visitor in {}: {}", scope, rename);
             }
-        } else if filter_ok.is_fixed() {
-            debug!(
-                "Getter visitor: will fix {} as {} in {}",
-                method,
-                filter_ok.inner(),
-                scope,
-            );
+        } else if rename.is_fix() {
+            debug!("Getter visitor in {}: {}", scope, rename);
         } else {
-            trace!(
-                "Getter visitor will rename {} as {} in {}",
-                method,
-                filter_ok.inner(),
-                scope
-            );
+            trace!("Getter visitor in {}: {}", scope, rename);
         }
 
         let renamable_line = self
             .renamable_lines
-            .entry(method_call.method.span().start().line - 1)
+            .entry(line_idx)
             .or_insert_with(Vec::new);
 
-        renamable_line.push(RenamableCall {
-            name: method,
-            new_name: filter_ok.into_inner(),
-        });
+        renamable_line.push(rename);
     }
 }
 
@@ -90,9 +60,20 @@ impl<'ast> Visit<'ast> for GetterVisitor {
     }
 
     fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
-        //println!("{}, {:#?}", self.scope_stack.last().unwrap().borrow(), node);
-        self.process(node);
+        self.process(
+            function::try_rename_getter_call(node),
+            node.method.span().start().line - 1,
+        );
 
         visit::visit_expr_method_call(self, node);
+    }
+
+    fn visit_macro(&mut self, node: &'ast syn::Macro) {
+        for getter in GetterCalls::parse(node.tokens.clone()) {
+            self.process(
+                getter.get_fn.try_rename(|| ReturnsBool::Maybe),
+                getter.line_idx,
+            )
+        }
     }
 }

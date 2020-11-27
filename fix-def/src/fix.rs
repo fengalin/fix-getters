@@ -40,17 +40,17 @@ pub(crate) fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Erro
     let f = fs::File::create(output_path).map_err(Error::WriteFile)?;
     let mut writer = std::io::BufWriter::new(f);
 
-    for (line_nb, line) in source_code.lines().enumerate() {
-        if let Some(rd) = getter_visitor.renamable_lines.get(&line_nb) {
+    for (line_idx, line) in source_code.lines().enumerate() {
+        if let Some(rd) = getter_visitor.renamable_lines.get(&line_idx) {
             if rd.needs_doc_alias {
                 writer
-                    .write_fmt(format_args!("#[doc(alias = \"{}\")] ", rd.name))
+                    .write_fmt(format_args!("#[doc(alias = \"{}\")] ", rd.rename.name()))
                     .map_err(Error::WriteFile)?;
             }
 
             // Rename getter
-            let origin = format!("fn {}(", rd.name);
-            let target = format!("fn {}(", rd.new_name);
+            let origin = format!("fn {}(", rd.rename.name());
+            let target = format!("fn {}(", rd.rename.new_name());
 
             writer
                 .write(line.replacen(&origin, &target, 1).as_bytes())

@@ -41,13 +41,13 @@ pub(crate) fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Erro
     let f = fs::File::create(output_path).map_err(Error::WriteFile)?;
     let mut writer = std::io::BufWriter::new(f);
 
-    for (line_nb, line) in source_code.lines().enumerate() {
-        if let Some(renamable_calls) = getter_visitor.renamable_lines.get(&line_nb) {
+    for (line_idx, line) in source_code.lines().enumerate() {
+        if let Some(renames) = getter_visitor.renamable_lines.get(&line_idx) {
             let mut line = Cow::from(line);
-            for rc in renamable_calls {
+            for rename in renames {
                 // Rename call
-                let origin = format!(".{}(", rc.name);
-                let target = format!(".{}(", rc.new_name);
+                let origin = format!(".{}(", rename.name());
+                let target = format!(".{}(", rename.new_name());
 
                 line = Cow::from(line.replacen(&origin, &target, 1));
             }

@@ -1,13 +1,12 @@
 use log::{debug, trace, warn};
-use rules::function::{self, RenameError};
+use rules::function::{self, RenameError, RenameOk};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use syn::visit::{self, Visit};
-use utils::scope::{FnWithScope, Scope};
+use utils::scope::Scope;
 
 #[derive(Debug)]
 pub(crate) struct RenamableDef {
-    pub(crate) name: String,
-    pub(crate) new_name: String,
+    pub(crate) rename: RenameOk,
     pub(crate) needs_doc_alias: bool,
 }
 
@@ -19,50 +18,40 @@ pub(crate) struct GetterVisitor {
 
 impl GetterVisitor {
     pub(crate) fn process(&mut self, sig: &syn::Signature) {
-        let fn_with_scope = FnWithScope::new(
-            &sig.ident,
-            &self.scope_stack.last().expect("empty scope stack"),
-        );
+        let scope = self.scope_stack.last().expect("empty scope stack").borrow();
 
         use Scope::*;
-        let needs_doc_alias = match *fn_with_scope.scope() {
+        let needs_doc_alias = match *scope {
             StructImpl(_) | Trait(_) => true,
             TraitImpl { .. } => false,
             _ => return,
         };
 
-        let filter_ok = match function::try_rename_getter(sig) {
-            Ok(filter_ok) => filter_ok,
+        let rename_res = function::try_rename_getter_def(sig);
+
+        let rename = match rename_res {
+            Ok(rename) => rename,
             Err(err) => match err {
-                RenameError::NotAGet => {
-                    trace!("Getter visitor skipping {}: {}", fn_with_scope, err);
+                RenameError::GetFunction(err) => {
+                    trace!("Getter visitor in {}, skipping {}", scope, err);
                     return;
                 }
                 _ => {
-                    debug!("Getter visitor skipping {}: {}", fn_with_scope, err);
+                    debug!("Getter visitor in {}, skipping {}", scope, err);
                     return;
                 }
             },
         };
 
-        if filter_ok.is_substituted() {
-            warn!(
-                "Getter visitor: will substitute {} with {}",
-                fn_with_scope,
-                filter_ok.inner()
-            );
-        } else if filter_ok.is_fixed() {
-            debug!(
-                "Getter visitor: will fix {} as {}",
-                fn_with_scope,
-                filter_ok.inner()
-            );
+        if rename.is_substitute() {
+            warn!("Getter visitor in {}, {}", scope, rename);
+        } else if rename.is_fix() {
+            debug!("Getter visitor in {}, {}", scope, rename);
         }
 
         let line = sig.ident.span().start().line - 1;
         let rd = RenamableDef {
-            name: fn_with_scope.fn_().to_string(),
-            new_name: filter_ok.into_inner(),
+            rename,
             needs_doc_alias,
         };
 

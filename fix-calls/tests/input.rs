@@ -9,9 +9,10 @@ const MY_CONST_NO_SELF: u64 = get_no_self(42u64);
 static My_STATIC: u64 = MyType::get_no_self(42u64);
 
 macro_rules! get_via_macro (
-    ($my_instance: expr) => (
-        $my_instance.get_foo()
-    )
+    ($self: expr) => ({
+        let ret = $self.get_foo();
+        ret
+    })
 );
 
 const fn get_no_self(other: u64) -> u64 {

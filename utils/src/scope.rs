@@ -1,9 +1,4 @@
-use std::{
-    cell::{Ref, RefCell},
-    fmt,
-    rc::Rc,
-    string::ToString,
-};
+use std::{cell::RefCell, fmt, rc::Rc, string::ToString};
 
 #[derive(Debug)]
 pub enum Scope {
@@ -42,44 +37,6 @@ impl fmt::Display for Scope {
             Trait(trait_) => f.write_str(trait_),
             TraitImpl { trait_, struct_ } => write!(f, "impl {} for {}", trait_, struct_),
             Unexpected => f.write_str("**Unexpected**"),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct FnWithScope {
-    fn_: String,
-    scope: Rc<RefCell<Scope>>,
-}
-
-impl FnWithScope {
-    pub fn new(fn_: impl ToString, scope: &Rc<RefCell<Scope>>) -> Self {
-        FnWithScope {
-            fn_: fn_.to_string(),
-            scope: Rc::clone(scope),
-        }
-    }
-
-    pub fn fn_(&self) -> &str {
-        &self.fn_
-    }
-
-    pub fn scope(&self) -> Ref<Scope> {
-        self.scope.borrow()
-    }
-}
-
-impl fmt::Display for FnWithScope {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        use Scope::*;
-
-        match &*self.scope.borrow() {
-            StructImpl(struct_) => write!(f, "{}::{}", struct_, self.fn_),
-            Trait(trait_) => write!(f, "{}::{}", trait_, self.fn_),
-            TraitImpl { trait_, struct_ } => {
-                write!(f, "{}::{} impl for {}", trait_, self.fn_, struct_)
-            }
-            other => Scope::fmt(other, f),
         }
     }
 }

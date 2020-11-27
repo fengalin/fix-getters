@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
-use std::collections::{HashMap, HashSet};
 use std::{
+    collections::{HashMap, HashSet},
     error::Error,
     fmt::{self, Display},
 };
@@ -59,176 +59,233 @@ lazy_static! {
     };
 }
 
-/// Applies getter name rules to the given getter suffix.
-///
-/// Suffix in the form of `get_suffix`.
-///
-/// The `is_bool_getter` function will be executed if it is
-/// necessary to check whether the getter returns exactly a bool.
-#[inline]
-pub fn try_rename_getter_suffix<F>(suffix: &str, is_bool_getter: F) -> Result<RenameOk, RenameError>
-where
-    F: FnOnce() -> bool,
-{
-    if RESERVED.contains(suffix) {
-        return Err(RenameError::Reserved);
-    }
-
-    if is_bool_getter() {
-        return Ok(rename_bool_getter(suffix));
-    }
-
-    let splits: Vec<&str> = suffix.splitn(2, '_').collect();
-    if splits.len() > 1 && PREFIX_TO_POSTFIX.contains(splits[0]) {
-        Ok(RenameOk::Fixed(format!("{}_{}", splits[1], splits[0])))
-    } else {
-        Ok(RenameOk::Unchanged(suffix.to_string()))
-    }
+/// A function which prefix is `get_`.
+#[derive(Debug)]
+pub struct GetFunction {
+    name: String,
+    suffix: String,
 }
 
-/// Applies boolean getter name rules.
-///
-/// Suffix in the form of `get_suffix`.
-#[inline]
-pub fn rename_bool_getter(suffix: &str) -> RenameOk {
-    try_substitute(suffix)
-        .map(RenameOk::Subsituted)
-        .unwrap_or_else(|| RenameOk::Fixed(format!("is_{}", suffix)))
-}
-
-/// Attempts to apply substitutions to the given boolean getter suffix.
-///
-/// Suffix in the form of `get_suffix`.
-#[inline]
-pub fn try_substitute(suffix: &str) -> Option<String> {
-    let splits: Vec<&str> = suffix.splitn(2, '_').collect();
-    BOOL_PREFIX_MAP.get(splits[0]).map(|substitute| {
-        if splits.len() == 1 {
-            substitute.to_string()
+impl GetFunction {
+    /// Attempts to extract the getter suffix from a function name.
+    pub fn try_from(name: String) -> Result<Self, GetFunctionError> {
+        if let Some(suffix) = name.strip_prefix("get_") {
+            Ok(GetFunction {
+                suffix: suffix.to_string(),
+                name,
+            })
         } else {
-            format!("{}_{}", substitute, splits[1])
+            Err(GetFunctionError(name))
         }
-    })
+    }
+
+    /// Attempts to apply getter name rules to this get function.
+    ///
+    /// The `returns_bool` function will be executed if it is
+    /// necessary to check whether the getter returns exactly a bool.
+    pub fn try_rename<F>(self, returns_bool: F) -> Result<RenameOk, RenameError>
+    where
+        F: FnOnce() -> ReturnsBool,
+    {
+        if RESERVED.contains(self.suffix.as_str()) {
+            return Err(RenameError::Reserved(self.name));
+        }
+
+        use ReturnsBool::*;
+        match returns_bool() {
+            False => (),
+            True => return Ok(self.rename_bool_getter()),
+            Maybe => {
+                // Use the boolean prefix map for a best effort estimation
+                if let Some(new_name) = self.try_substitute() {
+                    return Ok(RenameOk::Substitute {
+                        name: self.name,
+                        new_name,
+                    });
+                }
+            }
+        }
+
+        let splits: Vec<&str> = self.suffix.splitn(2, '_').collect();
+        if splits.len() > 1 && PREFIX_TO_POSTFIX.contains(splits[0]) {
+            Ok(RenameOk::Fix {
+                name: self.name,
+                new_name: format!("{}_{}", splits[1], splits[0]),
+            })
+        } else {
+            Ok(RenameOk::Regular {
+                name: self.name,
+                new_name: self.suffix,
+            })
+        }
+    }
+
+    /// Applies boolean getter name rules.
+    #[inline]
+    pub fn rename_bool_getter(self) -> RenameOk {
+        if let Some(new_name) = self.try_substitute() {
+            RenameOk::Substitute {
+                name: self.name,
+                new_name,
+            }
+        } else {
+            RenameOk::Fix {
+                name: self.name,
+                new_name: format!("is_{}", self.suffix),
+            }
+        }
+    }
+
+    /// Attempts to apply special substitutions for boolean getters.
+    ///
+    /// The substitutions are defined in [`BOOL_PREFIX_MAP`].
+    #[inline]
+    pub fn try_substitute(&self) -> Option<String> {
+        let splits: Vec<&str> = self.suffix.splitn(2, '_').collect();
+        BOOL_PREFIX_MAP.get(splits[0]).map(|substitute| {
+            if splits.len() == 1 {
+                substitute.to_string()
+            } else {
+                format!("{}_{}", substitute, splits[1])
+            }
+        })
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn suffix(&self) -> &str {
+        &self.suffix
+    }
+
+    pub fn into_name(self) -> String {
+        self.name
+    }
+}
+
+pub enum ReturnsBool {
+    True,
+    False,
+    Maybe,
 }
 
 /// Checks the rules against the given function signature.
-pub fn try_rename_getter(sig: &syn::Signature) -> Result<RenameOk, RenameError> {
-    use RenameError::*;
-
-    let name = sig.ident.to_string();
-    let suffix = name.strip_prefix("get_");
-
-    let suffix = match suffix {
-        Some(suffix) => suffix,
-        None => return Err(NotAGet),
-    };
+pub fn try_rename_getter_def(sig: &syn::Signature) -> Result<RenameOk, RenameError> {
+    let get_fn = GetFunction::try_from(sig.ident.to_string())?;
 
     let syn::Generics { params, .. } = &sig.generics;
     if !params.is_empty() {
-        return Err(GenericParams);
+        return Err(RenameError::GenericParams(get_fn.into_name()));
     }
 
     if sig.inputs.len() > 1 {
-        return Err(MultipleArgs);
+        return Err(RenameError::MultipleArgs(get_fn.into_name()));
     }
 
     match sig.inputs.first() {
         Some(syn::FnArg::Receiver { .. }) => (),
-        Some(_) => return Err(OneNoneSelfArg),
-        None => return Err(NoArgs),
+        Some(_) => return Err(RenameError::OneNoneSelfArg(get_fn.into_name())),
+        None => return Err(RenameError::NoArgs(get_fn.into_name())),
     }
 
-    try_rename_getter_suffix(suffix, || returns_bool(sig))
+    get_fn.try_rename(|| returns_bool(sig))
 }
 
 #[inline]
-fn returns_bool(sig: &syn::Signature) -> bool {
+fn returns_bool(sig: &syn::Signature) -> ReturnsBool {
     if let syn::ReturnType::Type(_, type_) = &sig.output {
         if let syn::Type::Path(syn::TypePath { path, .. }) = type_.as_ref() {
             if path.segments.len() == 1 {
                 if let Some(syn::PathSegment { ident, .. }) = &path.segments.first() {
                     if ident == "bool" {
-                        return true;
+                        return ReturnsBool::True;
                     }
                 }
             }
         }
     }
 
-    false
+    ReturnsBool::False
 }
 
 /// Checks the rules against the given method call.
 pub fn try_rename_getter_call(method_call: &syn::ExprMethodCall) -> Result<RenameOk, RenameError> {
-    use RenameError::*;
-
-    let name = method_call.method.to_string();
-    let suffix = name.strip_prefix("get_");
-
-    let suffix = match suffix {
-        Some(suffix) => suffix,
-        None => return Err(NotAGet),
-    };
+    let get_fn = GetFunction::try_from(method_call.method.to_string())?;
 
     if method_call.turbofish.is_some() {
-        return Err(GenericParams);
+        return Err(RenameError::GenericParams(get_fn.into_name()));
     }
 
     if !method_call.args.is_empty() {
-        return Err(MultipleArgs);
+        return Err(RenameError::MultipleArgs(get_fn.into_name()));
     }
 
-    try_rename_getter_suffix(suffix, || try_substitute(suffix).is_some())
+    get_fn.try_rename(|| ReturnsBool::Maybe)
 }
 
-/// Suffix renaming successfull Result.
+/// Get function suffix renaming successfull Result.
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum RenameOk {
-    /// Suffix was fixed to comply to rules. Ex. `get_active` -> `is_active`.
-    Fixed(String),
-    /// Suffix was fixed with substitution. Ex. `get_mute` -> `is_muted`.
-    Subsituted(String),
-    /// Suffix is unchanged.
-    Unchanged(String),
+    /// Fixing name to comply to rules. Ex. `get_active` -> `is_active`.
+    Fix { name: String, new_name: String },
+    /// Applying substitution. Ex. `get_mute` -> `is_muted`.
+    Substitute { name: String, new_name: String },
+    /// Regaular removal of the prefix.
+    Regular { name: String, new_name: String },
 }
 
 impl RenameOk {
-    pub fn into_inner(self) -> String {
+    /// Returns the new name.
+    pub fn new_name(&self) -> &str {
         match self {
-            RenameOk::Fixed(inner) | RenameOk::Subsituted(inner) | RenameOk::Unchanged(inner) => {
-                inner
-            }
+            RenameOk::Fix { new_name, .. }
+            | RenameOk::Substitute { new_name, .. }
+            | RenameOk::Regular { new_name, .. } => new_name.as_str(),
         }
     }
 
-    pub fn inner(&self) -> &str {
+    /// Returns the original name.
+    pub fn name(&self) -> &str {
         match self {
-            RenameOk::Fixed(inner) | RenameOk::Subsituted(inner) | RenameOk::Unchanged(inner) => {
-                inner.as_str()
-            }
+            RenameOk::Fix { name, .. }
+            | RenameOk::Substitute { name, .. }
+            | RenameOk::Regular { name, .. } => name.as_str(),
         }
     }
 
-    pub fn is_fixed(&self) -> bool {
-        matches!(self, RenameOk::Fixed(_))
+    pub fn is_fix(&self) -> bool {
+        matches!(self, RenameOk::Fix{ .. })
     }
 
-    pub fn is_substituted(&self) -> bool {
-        matches!(self, RenameOk::Subsituted(_))
+    pub fn is_substitute(&self) -> bool {
+        matches!(self, RenameOk::Substitute{ .. })
     }
 }
 
-/// Suffix renaming failure Result.
+impl Display for RenameOk {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        use RenameOk::*;
+
+        match self {
+            Fix { name, new_name } => write!(f, "fixing {} as {}", name, new_name),
+            Substitute { name, new_name } => write!(f, "substituting {} with {}", name, new_name),
+            Regular { name, new_name } => write!(f, "renaming {} as {}", name, new_name),
+        }
+    }
+}
+
+/// Get function suffix renaming failure Result.
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum RenameError {
-    GenericParams,
-    MultipleArgs,
-    NotAGet,
-    NoArgs,
-    OneNoneSelfArg,
-    Reserved,
+    GenericParams(String),
+    MultipleArgs(String),
+    GetFunction(GetFunctionError),
+    NoArgs(String),
+    OneNoneSelfArg(String),
+    Reserved(String),
 }
 
 impl Display for RenameError {
@@ -236,14 +293,39 @@ impl Display for RenameError {
         use RenameError::*;
 
         match self {
-            GenericParams => f.write_str("generic parameters"),
-            MultipleArgs => f.write_str("multiple arguments"),
-            NotAGet => f.write_str("not a get function"),
-            NoArgs => f.write_str("no arguments"),
-            OneNoneSelfArg => f.write_str("none `self` one argument"),
-            Reserved => f.write_str("name is reserved"),
+            GenericParams(name) => write!(f, "{}: generic parameter(s)", name),
+            MultipleArgs(name) => write!(f, "{}: multiple arguments", name),
+            GetFunction(err) => err.fmt(f),
+            NoArgs(name) => write!(f, "{}: no arguments", name),
+            OneNoneSelfArg(name) => write!(f, "{}: one none `self` argument", name),
+            Reserved(name) => write!(f, "{}: name is reserved", name),
         }
     }
 }
 
 impl Error for RenameError {}
+
+impl From<GetFunctionError> for RenameError {
+    fn from(err: GetFunctionError) -> Self {
+        RenameError::GetFunction(err)
+    }
+}
+
+/// Suffix renaming failure Result.
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct GetFunctionError(String);
+
+impl From<GetFunctionError> for String {
+    fn from(err: GetFunctionError) -> Self {
+        err.0
+    }
+}
+
+impl Display for GetFunctionError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}: is not a get_* function", self.0)
+    }
+}
+
+impl Error for GetFunctionError {}
