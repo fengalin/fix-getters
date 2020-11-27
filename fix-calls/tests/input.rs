@@ -32,6 +32,8 @@ fn from_my_type_might_be_bool() -> bool {
     let (_, _) = (my_instance.get_mute(), my_instance.get_emit_eos());
     println!("{} {}", my_instance.get_mute(), my_instance.get_emit_eos());
     let _ = my_instance.get_do_ts_param::<u64>();
+    let _ = my_instance.get_activable();
+    let _ = my_instance.get_activable_bool();
     // This one will fail unless we introduce a list of obvious booleans.
     my_instance.get_active()
 }
@@ -74,6 +76,14 @@ impl MyType {
     }
 
     fn get_active(&self) -> bool {
+        true
+    }
+
+    fn get_activable(&self) -> bool {
+        true
+    }
+
+    fn get_activable_bool(&self) -> bool {
         true
     }
 }

@@ -59,6 +59,11 @@ lazy_static! {
     };
 }
 
+/// Special suffix to detect getters returning a boolean.
+///
+/// Ex.: `get_seekable`.
+pub const BOOL_ABLE_PREFIX: &str = "able";
+
 /// A function which prefix is `get_`.
 #[derive(Debug)]
 pub struct GetFunction {
@@ -96,12 +101,8 @@ impl GetFunction {
             False => (),
             True => return Ok(self.rename_bool_getter()),
             Maybe => {
-                // Use the boolean prefix map for a best effort estimation
-                if let Some(new_name) = self.try_substitute() {
-                    return Ok(RenameOk::Substitute {
-                        name: self.name,
-                        new_name,
-                    });
+                if let Some(rename_ok) = self.guesstimate_boolness() {
+                    return Ok(rename_ok);
                 }
             }
         }
@@ -149,6 +150,30 @@ impl GetFunction {
                 format!("{}_{}", substitute, splits[1])
             }
         })
+    }
+
+    /// Attempts to determine if the getter returns a bool from its name.
+    ///
+    /// Uses the boolean prefix map and BOOL_ABLE_PREFIX as a best effort estimation.
+    ///
+    /// Returns the name substitute if it seems to be returning a bool.
+    pub fn guesstimate_boolness(&self) -> Option<RenameOk> {
+        if let Some(new_name) = self.try_substitute() {
+            Some(RenameOk::Substitute {
+                name: self.name.clone(),
+                new_name,
+            })
+        } else {
+            let splits: Vec<&str> = self.suffix.splitn(2, '_').collect();
+            if splits[0].ends_with(BOOL_ABLE_PREFIX) {
+                Some(RenameOk::Substitute {
+                    name: self.name.clone(),
+                    new_name: format!("is_{}", self.suffix()),
+                })
+            } else {
+                None
+            }
+        }
     }
 
     pub fn name(&self) -> &str {
