@@ -44,14 +44,12 @@ you won't be able to run `cargo fmt`.
 
 ## Uninstall
 
-By default, `cargo` installs the `fix-getters-def` executable in its `bin`
-directory. You can get it with:
+By default, `cargo` installs `fix-getters-def` in its `bin` directory.
+To uninstall, launch the following command:
 
 ```
-which cargo
+cargo uninstall fix-getters-def
 ```
-
-To uninstall `fix-getters-def`, just remove it from that directory.
 
 ## LICENSE
 
