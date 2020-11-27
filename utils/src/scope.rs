@@ -8,7 +8,7 @@ pub enum Scope {
     Static(String),
     StructImpl(String),
     Trait(String),
-    TraitImpl { trait_: String, struct_: String },
+    TraitImpl { trait_: String, type_: String },
     Unexpected,
 }
 
@@ -35,7 +35,7 @@ impl fmt::Display for Scope {
             Static(name) => write!(f, "static {}", name),
             StructImpl(struct_) => f.write_str(struct_),
             Trait(trait_) => f.write_str(trait_),
-            TraitImpl { trait_, struct_ } => write!(f, "impl {} for {}", trait_, struct_),
+            TraitImpl { trait_, type_ } => write!(f, "impl {} for {}", trait_, type_),
             Unexpected => f.write_str("**Unexpected**"),
         }
     }
@@ -48,44 +48,18 @@ pub fn item_scope(node: &syn::Item) -> Scope {
         syn::Item::Impl(syn::ItemImpl {
             self_ty, trait_, ..
         }) => {
-            let struct_ident = match self_ty.as_ref() {
-                syn::Type::Path(syn::TypePath { path, .. }) => path_ident(&self_ty, &path),
-                syn::Type::Reference(syn::TypeReference {
-                    lifetime,
-                    mutability,
-                    elem,
-                    ..
-                }) => match elem.as_ref() {
-                    syn::Type::Path(syn::TypePath { path, .. }) => {
-                        let prefix = match lifetime {
-                            None => if mutability.is_some() { "&mut " } else { "&" }.to_string(),
-                            Some(lifetime) => {
-                                if mutability.is_some() {
-                                    format!("&{} mut ", lifetime.to_string())
-                                } else {
-                                    format!("&{} ", lifetime.to_string())
-                                }
-                            }
-                        };
-
-                        format!("{}{}", prefix, path_ident(&self_ty, &path))
-                    }
-                    _ => panic!("unexpected Reference elem in self_ty {:#?}", self_ty),
-                },
-                // FIXME parse the tuple... or not :)
-                syn::Type::Tuple(..) => "(_, ...)".to_string(),
-                _ => panic!("unexpected self_ty {:#?}", self_ty),
-            };
+            // FIXME
+            let type_ident = format_type_name(self_ty);
 
             if let Some((_, trait_path, _)) = trait_ {
-                let trait_ident = path_ident(&self_ty, &trait_path);
+                let trait_ident = path_ident(&trait_path);
 
                 Scope::TraitImpl {
                     trait_: trait_ident,
-                    struct_: struct_ident,
+                    type_: type_ident,
                 }
             } else {
-                Scope::StructImpl(struct_ident)
+                Scope::StructImpl(type_ident)
             }
         }
         syn::Item::Macro(syn::ItemMacro { ident, .. }) => Scope::Macro(
@@ -101,13 +75,68 @@ pub fn item_scope(node: &syn::Item) -> Scope {
     }
 }
 
-fn path_ident(self_ty: &syn::Type, path: &syn::Path) -> String {
+fn path_ident(path: &syn::Path) -> String {
     if path.segments.is_empty() {
-        panic!("no segments in path for self_ty {:#?}", self_ty);
+        return String::default();
     }
 
-    // FIXME use more that just the last segment
     let syn::PathSegment { ident, .. } = &path.segments.last().unwrap();
-
     ident.to_string()
+}
+
+fn format_type_name(self_ty: &syn::Type) -> String {
+    match self_ty {
+        syn::Type::Path(syn::TypePath { path, .. }) => path_ident(&path),
+        syn::Type::Reference(syn::TypeReference {
+            lifetime,
+            mutability,
+            elem,
+            ..
+        }) => {
+            let prefix = match lifetime {
+                None => if mutability.is_some() { "&mut " } else { "&" }.to_string(),
+                Some(lifetime) => {
+                    if mutability.is_some() {
+                        format!("&{} mut ", lifetime.to_string())
+                    } else {
+                        format!("&{} ", lifetime.to_string())
+                    }
+                }
+            };
+
+            format!("{}{}", prefix, format_type_name(&elem))
+        }
+        syn::Type::Slice(syn::TypeSlice { elem, .. }) => format!("[{}]", format_type_name(&elem)),
+        syn::Type::TraitObject(syn::TypeTraitObject { bounds, .. }) => {
+            let mut trait_bound = "dyn ".to_string();
+            for (idx, bound) in bounds.into_iter().enumerate() {
+                if idx > 0 {
+                    trait_bound += " + ";
+                }
+
+                if let syn::TypeParamBound::Trait(trait_) = bound {
+                    trait_bound += &path_ident(&trait_.path);
+                }
+            }
+            trait_bound
+        }
+        syn::Type::Tuple(syn::TypeTuple { elems, .. }) => {
+            let mut tuple = "(".to_string();
+            for (idx, elem) in elems.into_iter().enumerate() {
+                if idx > 0 {
+                    tuple += ", ";
+                }
+
+                tuple += &format_type_name(elem);
+            }
+            tuple + ")"
+        }
+        syn::Type::Paren(syn::TypeParen { elem, .. }) => {
+            format!("({})", format_type_name(&elem))
+        }
+        syn::Type::Ptr(syn::TypePtr { elem, .. }) => {
+            format!("*{}", format_type_name(&elem))
+        }
+        _ => panic!("unexpected self_ty {:#?}", self_ty),
+    }
 }

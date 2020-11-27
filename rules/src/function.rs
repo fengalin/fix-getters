@@ -18,6 +18,7 @@ lazy_static! {
         reserved.insert("mut");
         reserved.insert("optional");
         reserved.insert("owned");
+        reserved.insert("ref");
         reserved.insert("some");
         reserved.insert("type");
         reserved

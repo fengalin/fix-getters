@@ -113,3 +113,35 @@ impl MyTrait for MyType {
         self.get_trait_no_impl().into()
     }
 }
+
+impl<'a> MyTrait for &'a [MyType] {
+    fn get_trait_no_impl(&self) -> u64 {
+        42u64
+    }
+
+    fn get_trait_impl_param<T: From<u64>>(&self) -> T {
+        self.get_trait_no_impl().into()
+    }
+}
+
+trait Test: Sized {}
+
+impl<'a> MyTrait for &'a [&'a (dyn Test + Debug)] {
+    fn get_trait_no_impl(&self) -> u64 {
+        42u64
+    }
+
+    fn get_trait_impl_param<T: From<u64>>(&self) -> T {
+        self.get_trait_no_impl().into()
+    }
+}
+
+impl<'a> MyTrait for &'a (u64, bool) {
+    fn get_trait_no_impl(&self) -> u64 {
+        42u64
+    }
+
+    fn get_trait_impl_param<T: From<u64>>(&self) -> T {
+        self.get_trait_no_impl().into()
+    }
+}
