@@ -28,11 +28,7 @@ fn main() {
                 .long("verbose")
                 .help("Show detailed logs"),
         )
-        .arg(
-            clap::Arg::with_name("PATH")
-                .required(true)
-                .help("Crate or workspace root path"),
-        )
+        .arg(clap::Arg::with_name("PATH").help("Crate or workspace root path"))
         .arg(clap::Arg::with_name("OUTPUT").help("Output to a different root path"))
         .get_matches();
 
@@ -47,11 +43,10 @@ fn main() {
         .init()
         .unwrap();
 
-    let path: PathBuf = m
-        .value_of("PATH")
-        .expect("checked by claps")
-        .to_string()
-        .into();
+    let path: PathBuf = match m.value_of("PATH") {
+        Some(path) => path.into(),
+        None => PathBuf::from("."),
+    };
 
     if !path.exists() {
         error!(

@@ -15,7 +15,7 @@ regular command.
 
 ```
 cd fix-getters/fix-def
-cargo install --path ./
+cargo install --path .
 ```
 
 ## Usage
@@ -28,6 +28,8 @@ fix-getters-def _PROJECT_PATH_
 cd _PROJECT_PATH_
 cargo fmt
 ```
+
+You can also omit the _PROJECT_PATH_ in which case current directory will be used.
 
 Note that the call sites won't be changed. Use [fix-calls](../fix-calls/README.md)
 for that.
