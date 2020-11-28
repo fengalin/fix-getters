@@ -1,5 +1,5 @@
 use log::{debug, trace, warn};
-use rules::function::{self, RenameError, RenameOk, ReturnsBool};
+use rules::{self, RenameError, RenameOk, ReturnsBool};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use syn::visit::{self, Visit};
 use utils::scope::Scope;
@@ -21,7 +21,7 @@ pub(crate) struct GetterVisitor {
 impl GetterVisitor {
     pub(crate) fn process_signature(&mut self, sig: &syn::Signature) {
         let line_idx = sig.ident.span().start().line - 1;
-        self.process(function::try_rename_getter_def(sig), line_idx);
+        self.process(rules::try_rename_getter_def(sig), line_idx);
     }
 
     pub(crate) fn process(&mut self, rename_res: Result<RenameOk, RenameError>, line_idx: usize) {

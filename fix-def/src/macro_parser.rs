@@ -1,7 +1,7 @@
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
 use syn::buffer::{Cursor, TokenBuffer};
 
-use rules::function::GetFunction;
+use rules::GetFunction;
 
 #[derive(Debug)]
 pub(crate) struct Getter {
@@ -56,9 +56,7 @@ impl GetterDefs {
                         }
                     }
                     State::Fn => {
-                        if let Ok(get_fn) =
-                            rules::function::GetFunction::try_from(ident.to_string())
-                        {
+                        if let Ok(get_fn) = GetFunction::try_from(ident.to_string()) {
                             self.state = State::MaybeGetter(Getter {
                                 line_idx: ident.span().start().line - 1,
                                 get_fn,

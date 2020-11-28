@@ -1,7 +1,7 @@
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
 use syn::buffer::{Cursor, TokenBuffer};
 
-use rules::function::GetFunction;
+use rules::GetFunction;
 
 #[derive(Debug)]
 pub(crate) struct Getter {

@@ -1,5 +1,5 @@
 use log::{debug, trace, warn};
-use rules::function::{self, RenameError, RenameOk, ReturnsBool};
+use rules::{self, RenameError, RenameOk, ReturnsBool};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use syn::visit::{self, Visit};
 use utils::scope::Scope;
@@ -61,7 +61,7 @@ impl<'ast> Visit<'ast> for GetterVisitor {
 
     fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
         self.process(
-            function::try_rename_getter_call(node),
+            rules::try_rename_getter_call(node),
             node.method.span().start().line - 1,
         );
 
