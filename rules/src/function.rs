@@ -298,6 +298,14 @@ impl RenameOk {
     pub fn is_substitute(&self) -> bool {
         matches!(self, RenameOk::Substitute{ .. })
     }
+
+    pub fn into_new_name(self) -> String {
+        match self {
+            RenameOk::Fix { new_name, .. }
+            | RenameOk::Substitute { new_name, .. }
+            | RenameOk::Regular { new_name, .. } => new_name,
+        }
+    }
 }
 
 impl Display for RenameOk {
@@ -322,6 +330,21 @@ pub enum RenameError {
     NoArgs(String),
     OneNoneSelfArg(String),
     Reserved(String),
+}
+
+impl RenameError {
+    pub fn into_name(self) -> String {
+        use RenameError::*;
+
+        match self {
+            GenericParams(name) => name,
+            MultipleArgs(name) => name,
+            GetFunction(err) => err.into_name(),
+            NoArgs(name) => name,
+            OneNoneSelfArg(name) => name,
+            Reserved(name) => name,
+        }
+    }
 }
 
 impl Display for RenameError {
@@ -351,6 +374,12 @@ impl From<GetFunctionError> for RenameError {
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct GetFunctionError(String);
+
+impl GetFunctionError {
+    pub fn into_name(self) -> String {
+        self.0
+    }
+}
 
 impl From<GetFunctionError> for String {
     fn from(err: GetFunctionError) -> Self {
