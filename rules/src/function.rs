@@ -40,7 +40,8 @@ lazy_static! {
         bool_prefix_map.insert("fill", "fills");
         bool_prefix_map.insert("mute", "is_muted");
         bool_prefix_map.insert("reset", "resets");
-        bool_prefix_map.insert("result", "result");
+        bool_prefix_map.insert("result", "result"); // replace `get_result` with `result`, not `is_result`
+        bool_prefix_map.insert("show", "shows");
         bool_prefix_map
     };
 
