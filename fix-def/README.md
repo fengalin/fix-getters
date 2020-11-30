@@ -1,7 +1,7 @@
 # fix-getters-def
 
 This package is a tool to fix getters definitions by removing the `get_` prefix
-according to rules defined in [`rules`](../rules/README.md). It also inserts a
+according to rules defined in [`rules`](../rules/). It also inserts a
 `[doc(alias = "get_name")]` attribute where necessary so that the new name for
 the getter can be retrieved from the documentations by searching for previous
 name.
@@ -31,8 +31,8 @@ cargo fmt
 
 You can also omit the _PROJECT_PATH_ in which case current directory will be used.
 
-Note that the call sites won't be changed. Use [fix-calls](../fix-calls/README.md)
-for that.
+Note that the call sites won't be changed. Use [fix-calls](../fix-calls/) for
+that.
 
 To test the result first, you can run:
 

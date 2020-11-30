@@ -1,7 +1,7 @@
 # fix-getters-calls
 
 This package is a tool to fix getters call sites by removing the `get_` prefix
-according to rules defined in [`rules`](../rules/README.md).
+according to rules defined in [`rules`](../rules/).
 
 See the [workspace documentation](../README.md) for more details on `fix-getters`.
 
@@ -28,7 +28,7 @@ cargo fmt
 
 You can also omit the _PROJECT_PATH_ in which case current directory will be used.
 
-Note that the getters definition won't be changed. Use [fix-def](../fix-def/README.md)
+Note that the getters definition won't be changed. Use [fix-def](../fix-def/)
 for that.
 
 To test the result first, you can run:

@@ -9,7 +9,7 @@ See the [workspace documentation](../README.md) for more details on `fix-getters
 The `utils` functions provide features such as:
 
 - a common `Error` which can be handled in `main`.
-- a file system traversal function which complies with the [rules](../rules/README.md).
+- a file system traversal function which complies with the [rules](../rules/).
 - a Rust scope tracker which helps figure out the context where a function is
   defined or used.
 

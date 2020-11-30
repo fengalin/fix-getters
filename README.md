@@ -25,10 +25,10 @@ E.g.:
 
 This workspace contains the following packages:
 
-- [rules](rules/README.md): rules to apply during the update process.
-- [fix-def](fix-def/README.md): a tool to update the getters definition.
-- [fix-calls](fix-calls/README.md): a tool to update the getters call sites.
-- [utils](utils/README.md): common functions to the fix-getters tools.
+- [rules](rules/): rules to apply during the update process.
+- [fix-def](fix-def/): a tool to update the getters definition.
+- [fix-calls](fix-calls/): a tool to update the getters call sites.
+- [utils](utils/): common functions to the fix-getters tools.
 
 ## LICENSE
 
