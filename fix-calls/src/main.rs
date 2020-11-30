@@ -2,14 +2,13 @@ mod fix;
 use fix::fix;
 
 mod getter_visitor;
-pub(crate) use getter_visitor::GetterVisitor;
+pub(crate) use getter_visitor::GetterCallsVisitor;
 
 pub(crate) mod macro_parser;
 
 use log::{error, info};
-use std::path::PathBuf;
-use std::process;
-use utils::{fs, Error};
+use std::{path::PathBuf, process};
+use utils::fs;
 
 fn main() {
     let m = clap::App::new(clap::crate_name!())

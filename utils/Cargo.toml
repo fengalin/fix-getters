@@ -8,7 +8,23 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
-log = "0.4"
-syn = { version = "1.0", default-features = false, features = ["full", "extra-traits"] }
+cfg-if = "1.0"
+log = { version = "0.4", optional = true }
+syn = { version = "1.0", optional = true , default-features = false, features = ["full", "extra-traits"] }
 
-rules = { package = "fix-getters-rules", path = "../rules" }
+rules = { package = "fix-getters-rules", optional = true, path = "../rules" }
+
+[features]
+default = ["fs", "log", "parser"]
+
+# Filesystem module.
+fs = ["rules"]
+
+# Rust code parser related utils.
+parser = ["parser-error", "scope"]
+
+# Rust code parser error wrapper.
+parser-error = ["syn"]
+
+# Rust code Scope identification.
+scope = ["syn"]

@@ -1,9 +1,13 @@
+//! Rust source file level getter definitions fixer.
+
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use syn::visit::Visit;
 
-use crate::{Error, GetterVisitor};
+use utils::{Error, ParseFileError};
+
+use crate::GetterDefsVisitor;
 
 /// Fixes the file at the given path.
 ///
@@ -15,23 +19,19 @@ pub(crate) fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Erro
     let syntax_tree = match syn::parse_file(&source_code) {
         Ok(syntax_tree) => syntax_tree,
         Err(error) => {
-            return Err(Error::ParseFile {
-                error,
-                filepath: path.to_owned(),
-                source_code,
-            });
+            return Err(ParseFileError::new(error, path.to_owned(), source_code).into());
         }
     };
 
-    let mut getter_visitor = GetterVisitor::default();
-    getter_visitor.visit_file(&syntax_tree);
+    let mut visitor = GetterDefsVisitor::default();
+    visitor.visit_file(&syntax_tree);
 
     let output_path = match output_path {
         Some(output_path) => output_path,
         None => path,
     };
 
-    if getter_visitor.renamable_lines.is_empty() {
+    if visitor.getter_defs.is_empty() {
         // Nothing to do for this file
         return Ok(());
     }
@@ -41,16 +41,16 @@ pub(crate) fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Erro
     let mut writer = std::io::BufWriter::new(f);
 
     for (line_idx, line) in source_code.lines().enumerate() {
-        if let Some(rd) = getter_visitor.renamable_lines.get(&line_idx) {
-            if rd.needs_doc_alias {
+        if let Some(getter_defs) = visitor.getter_defs.get(&line_idx) {
+            if getter_defs.needs_doc_alias {
                 writer
-                    .write_fmt(format_args!("#[doc(alias = \"{}\")] ", rd.rename.name()))
+                    .write_fmt(format_args!("#[doc(alias = \"{}\")] ", getter_defs.name))
                     .map_err(Error::WriteFile)?;
             }
 
             // Rename getter
-            let origin = format!("fn {}(", rd.rename.name());
-            let target = format!("fn {}(", rd.rename.new_name());
+            let origin = format!("fn {}(", getter_defs.name);
+            let target = format!("fn {}(", getter_defs.new_name.as_str());
 
             writer
                 .write(line.replacen(&origin, &target, 1).as_bytes())

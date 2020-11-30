@@ -2,14 +2,77 @@ mod fix;
 use fix::fix;
 
 mod getter_visitor;
-pub(crate) use getter_visitor::GetterVisitor;
+pub(crate) use getter_visitor::GetterDefsVisitor;
 
 pub(crate) mod macro_parser;
 
 use log::{error, info};
-use std::path::PathBuf;
-use std::process;
-use utils::{fs, Error};
+use std::{
+    fmt::{self, Display},
+    path::PathBuf,
+    process,
+};
+use utils::{fs, Getter, GetterError};
+
+use rules::{NewName, ReturnsBool};
+
+#[derive(Debug)]
+struct GetterDef {
+    name: String,
+    new_name: NewName,
+    returns_bool: ReturnsBool,
+    line: usize,
+    needs_doc_alias: bool,
+}
+
+impl GetterDef {
+    fn try_new(
+        name: String,
+        returns_bool: ReturnsBool,
+        line: usize,
+        needs_doc_alias: bool,
+    ) -> Result<Self, GetterError> {
+        Getter::try_new(name, returns_bool, line)
+            .map(|getter| GetterDef::from(getter, needs_doc_alias))
+    }
+
+    fn try_new_and_log(
+        scope: &dyn Display,
+        name: String,
+        returns_bool: ReturnsBool,
+        line: usize,
+        needs_doc_alias: bool,
+    ) -> Result<Self, GetterError> {
+        Getter::try_new_and_log(scope, name, returns_bool, line)
+            .map(|getter| GetterDef::from(getter, needs_doc_alias))
+    }
+
+    fn from(getter: Getter, needs_doc_alias: bool) -> Self {
+        GetterDef {
+            name: getter.name,
+            new_name: getter.new_name,
+            line: getter.line,
+            needs_doc_alias,
+            returns_bool: getter.returns_bool,
+        }
+    }
+}
+
+impl Display for GetterDef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use ReturnsBool::*;
+        let return_str = match self.returns_bool {
+            False => "",
+            True => " -> bool",
+            Maybe => " -> maybe bool",
+        };
+        write!(
+            f,
+            "{}(){} {}() @ {}",
+            self.name, return_str, self.new_name, self.line
+        )
+    }
+}
 
 fn main() {
     let m = clap::App::new(clap::crate_name!())
@@ -34,7 +97,7 @@ fn main() {
 
     stderrlog::new()
         .verbosity(if m.is_present("verbose") {
-            4
+            5
         } else if m.is_present("quiet") {
             1
         } else {

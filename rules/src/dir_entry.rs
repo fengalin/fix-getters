@@ -1,3 +1,5 @@
+//! Directory entry filtering.
+
 use lazy_static::lazy_static;
 use std::collections::HashSet;
 use std::fs::DirEntry;

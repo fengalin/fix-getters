@@ -1,5 +1,8 @@
+//! Rust code scope identification.
+
 use std::{cell::RefCell, fmt, rc::Rc, string::ToString};
 
+/// Rust code scope identification.
 #[derive(Debug)]
 pub enum Scope {
     Const(String),
@@ -15,6 +18,40 @@ pub enum Scope {
 impl Default for Scope {
     fn default() -> Self {
         Scope::Unexpected
+    }
+}
+
+impl From<&syn::Item> for Scope {
+    fn from(node: &syn::Item) -> Self {
+        match node {
+            syn::Item::Const(item) => Scope::Const(item.ident.to_string()),
+            syn::Item::Fn(fn_) => Scope::Fn(fn_.sig.ident.to_string()),
+            syn::Item::Impl(impl_) => {
+                let type_ident = format_type_name(&impl_.self_ty);
+
+                if let Some((_, trait_path, _)) = &impl_.trait_ {
+                    let trait_ident = path_ident(&trait_path);
+
+                    Scope::TraitImpl {
+                        trait_: trait_ident,
+                        type_: type_ident,
+                    }
+                } else {
+                    Scope::StructImpl(type_ident)
+                }
+            }
+            syn::Item::Macro(macro_) => Scope::Macro(
+                macro_
+                    .ident
+                    .as_ref()
+                    .map(|ident| ident.to_string())
+                    .unwrap_or_else(|| "unnamed".to_string()),
+            ),
+            syn::Item::Macro2(macro2) => Scope::Macro(macro2.ident.to_string()),
+            syn::Item::Static(static_) => Scope::Static(static_.ident.to_string()),
+            syn::Item::Trait(trait_) => Scope::Trait(trait_.ident.to_string()),
+            _ => Scope::Unexpected,
+        }
     }
 }
 
@@ -36,42 +73,8 @@ impl fmt::Display for Scope {
             StructImpl(struct_) => f.write_str(struct_),
             Trait(trait_) => f.write_str(trait_),
             TraitImpl { trait_, type_ } => write!(f, "impl {} for {}", trait_, type_),
-            Unexpected => f.write_str("**Unexpected**"),
+            Unexpected => f.write_str("**Unexpected scope**"),
         }
-    }
-}
-
-pub fn item_scope(node: &syn::Item) -> Scope {
-    match node {
-        syn::Item::Const(syn::ItemConst { ident, .. }) => Scope::Const(ident.to_string()),
-        syn::Item::Fn(syn::ItemFn { sig, .. }) => Scope::Fn(sig.ident.to_string()),
-        syn::Item::Impl(syn::ItemImpl {
-            self_ty, trait_, ..
-        }) => {
-            // FIXME
-            let type_ident = format_type_name(self_ty);
-
-            if let Some((_, trait_path, _)) = trait_ {
-                let trait_ident = path_ident(&trait_path);
-
-                Scope::TraitImpl {
-                    trait_: trait_ident,
-                    type_: type_ident,
-                }
-            } else {
-                Scope::StructImpl(type_ident)
-            }
-        }
-        syn::Item::Macro(syn::ItemMacro { ident, .. }) => Scope::Macro(
-            ident
-                .as_ref()
-                .map(|ident| ident.to_string())
-                .unwrap_or_else(|| "unnamed".to_string()),
-        ),
-        syn::Item::Macro2(syn::ItemMacro2 { ident, .. }) => Scope::Macro(ident.to_string()),
-        syn::Item::Static(syn::ItemStatic { ident, .. }) => Scope::Static(ident.to_string()),
-        syn::Item::Trait(syn::ItemTrait { ident, .. }) => Scope::Trait(ident.to_string()),
-        _ => Scope::Unexpected,
     }
 }
 
@@ -79,24 +82,22 @@ fn path_ident(path: &syn::Path) -> String {
     if path.segments.is_empty() {
         return String::default();
     }
-
-    let syn::PathSegment { ident, .. } = &path.segments.last().unwrap();
-    ident.to_string()
+    path.segments.last().unwrap().ident.to_string()
 }
 
 fn format_type_name(self_ty: &syn::Type) -> String {
     match self_ty {
-        syn::Type::Path(syn::TypePath { path, .. }) => path_ident(&path),
-        syn::Type::Reference(syn::TypeReference {
-            lifetime,
-            mutability,
-            elem,
-            ..
-        }) => {
-            let prefix = match lifetime {
-                None => if mutability.is_some() { "&mut " } else { "&" }.to_string(),
+        syn::Type::Path(path) => path_ident(&path.path),
+        syn::Type::Reference(ref_) => {
+            let prefix = match &ref_.lifetime {
+                None => if ref_.mutability.is_some() {
+                    "&mut "
+                } else {
+                    "&"
+                }
+                .to_string(),
                 Some(lifetime) => {
-                    if mutability.is_some() {
+                    if ref_.mutability.is_some() {
                         format!("&{} mut ", lifetime.to_string())
                     } else {
                         format!("&{} ", lifetime.to_string())
@@ -104,12 +105,12 @@ fn format_type_name(self_ty: &syn::Type) -> String {
                 }
             };
 
-            format!("{}{}", prefix, format_type_name(&elem))
+            format!("{}{}", prefix, format_type_name(&ref_.elem))
         }
-        syn::Type::Slice(syn::TypeSlice { elem, .. }) => format!("[{}]", format_type_name(&elem)),
-        syn::Type::TraitObject(syn::TypeTraitObject { bounds, .. }) => {
+        syn::Type::Slice(slice) => format!("[{}]", format_type_name(&slice.elem)),
+        syn::Type::TraitObject(trait_obj) => {
             let mut trait_bound = "dyn ".to_string();
-            for (idx, bound) in bounds.into_iter().enumerate() {
+            for (idx, bound) in trait_obj.bounds.iter().enumerate() {
                 if idx > 0 {
                     trait_bound += " + ";
                 }
@@ -120,23 +121,23 @@ fn format_type_name(self_ty: &syn::Type) -> String {
             }
             trait_bound
         }
-        syn::Type::Tuple(syn::TypeTuple { elems, .. }) => {
-            let mut tuple = "(".to_string();
-            for (idx, elem) in elems.into_iter().enumerate() {
+        syn::Type::Tuple(tuple) => {
+            let mut tuple_str = "(".to_string();
+            for (idx, elem) in tuple.elems.iter().enumerate() {
                 if idx > 0 {
-                    tuple += ", ";
+                    tuple_str += ", ";
                 }
 
-                tuple += &format_type_name(elem);
+                tuple_str += &format_type_name(elem);
             }
-            tuple + ")"
+            tuple_str + ")"
         }
-        syn::Type::Paren(syn::TypeParen { elem, .. }) => {
-            format!("({})", format_type_name(&elem))
+        syn::Type::Paren(paren) => {
+            format!("({})", format_type_name(&paren.elem))
         }
-        syn::Type::Ptr(syn::TypePtr { elem, .. }) => {
-            format!("*{}", format_type_name(&elem))
+        syn::Type::Ptr(ptr) => {
+            format!("*{}", format_type_name(&ptr.elem))
         }
-        _ => panic!("unexpected self_ty {:#?}", self_ty),
+        _ => unimplemented!("format type formatting for {:#?}", self_ty),
     }
 }

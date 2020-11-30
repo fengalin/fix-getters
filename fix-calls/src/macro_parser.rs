@@ -1,61 +1,85 @@
+//! Macro parser in search of renamable getter calls.
+
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
 use syn::buffer::{Cursor, TokenBuffer};
 
-use rules::GetFunction;
+use rules::ReturnsBool;
+use utils::{getter, Getter, NonGetterReason, Scope};
 
 #[derive(Debug)]
-pub(crate) struct Getter {
-    pub(crate) line_idx: usize,
-    pub(crate) get_fn: GetFunction,
-}
-
-#[derive(Debug, Default)]
-pub(crate) struct GetterCalls {
+pub(crate) struct GetterCallsCollector<'scope> {
     state: State,
-    pub(crate) getters: Vec<Getter>,
+    pub(crate) getter_calls: Vec<Getter>,
+    scope: &'scope Scope,
 }
 
-impl GetterCalls {
-    pub(crate) fn parse(stream: TokenStream) -> Vec<Getter> {
-        let mut fn_calls = GetterCalls::default();
+impl<'scope> GetterCallsCollector<'scope> {
+    pub(crate) fn collect(stream: TokenStream, scope: &Scope) -> Vec<Getter> {
+        let mut this = GetterCallsCollector {
+            state: State::default(),
+            getter_calls: Vec::new(),
+            scope,
+        };
         let token_buf = TokenBuffer::new2(stream);
-        fn_calls.collect_getter_calls(token_buf.begin());
-        fn_calls.getters
+        this.parse(token_buf.begin());
+        this.getter_calls
     }
 
-    fn collect_getter_calls(&mut self, mut rest: Cursor) {
+    fn parse(&mut self, mut rest: Cursor) {
+        use NonGetterReason::*;
+
         while let Some((tt, next)) = rest.token_tree() {
             // Find patterns `.get_suffix()`
             match tt {
                 TokenTree::Punct(punct) => {
-                    if punct.as_char() == '.' {
-                        self.state = State::Dot;
-                    } else {
-                        self.state = State::None;
+                    let char_ = punct.as_char();
+                    match char_ {
+                        '.' => self.state = State::Dot,
+                        ':' | '<' => {
+                            if let State::MaybeGetter(getter) = self.state.take() {
+                                getter::skip(
+                                    self.scope,
+                                    getter.name,
+                                    &GenericTypeParam,
+                                    getter.line,
+                                );
+                            }
+                        }
+                        _ => self.state = State::None,
                     }
                 }
                 TokenTree::Ident(ident) => {
                     if let State::Dot = self.state.take() {
-                        if let Ok(get_fn) =
-                            rules::function::GetFunction::try_from(ident.to_string())
-                        {
-                            self.state = State::MaybeGetter(Getter {
-                                line_idx: ident.span().start().line - 1,
-                                get_fn,
-                            });
+                        let res = Getter::try_new(
+                            ident.to_string(),
+                            ReturnsBool::Maybe,
+                            ident.span().start().line,
+                        );
+                        match res {
+                            Ok(getter) => {
+                                // Will log when the getter is confirmed
+                                self.state = State::MaybeGetter(getter)
+                            }
+                            Err(err) => getter::log_err(self.scope, &err),
                         }
                     }
                 }
                 TokenTree::Group(group) => {
-                    if group.stream().is_empty() && group.delimiter() == Delimiter::Parenthesis {
-                        if let State::MaybeGetter(getter) = self.state.take() {
-                            // found `()` after a getter call
-                            self.getters.push(getter);
+                    if let State::MaybeGetter(getter) = self.state.take() {
+                        if let Delimiter::Parenthesis = group.delimiter() {
+                            if group.stream().is_empty() {
+                                // found `()` after a getter call
+                                getter.log(self.scope);
+                                self.getter_calls.push(getter);
+                            } else {
+                                getter::skip(self.scope, getter.name, &MultipleArgs, getter.line);
+                            }
                         }
-                    } else {
-                        self.state = State::None;
+                    }
+
+                    if !group.stream().is_empty() {
                         let token_buf = TokenBuffer::new2(group.stream());
-                        self.collect_getter_calls(token_buf.begin());
+                        self.parse(token_buf.begin());
                     }
                 }
                 TokenTree::Literal(_) => {

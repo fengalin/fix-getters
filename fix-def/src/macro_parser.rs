@@ -1,49 +1,68 @@
+//! Macro parser in search of renamable getter definitions.
+
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
 use syn::buffer::{Cursor, TokenBuffer};
 
-use rules::GetFunction;
+use rules::ReturnsBool;
+use utils::{getter, NonGetterReason, Scope};
+
+use crate::GetterDef;
 
 #[derive(Debug)]
-pub(crate) struct Getter {
-    pub(crate) line_idx: usize,
-    pub(crate) get_fn: GetFunction,
-    pub(crate) returns_bool: bool,
-}
-
-#[derive(Debug, Default)]
-pub(crate) struct GetterDefs {
+pub(crate) struct GetterDefsCollector<'scope> {
     state: State,
-    pub(crate) getters: Vec<Getter>,
+    pub(crate) getter_defs: Vec<GetterDef>,
+    scope: &'scope Scope,
 }
 
-impl GetterDefs {
-    pub(crate) fn parse(stream: TokenStream) -> Vec<Getter> {
-        let mut fn_calls = GetterDefs::default();
+impl<'scope> GetterDefsCollector<'scope> {
+    pub(crate) fn collect(stream: TokenStream, scope: &Scope) -> Vec<GetterDef> {
+        let mut this = GetterDefsCollector {
+            state: State::default(),
+            getter_defs: Vec::new(),
+            scope,
+        };
         let token_buf = TokenBuffer::new2(stream);
-        fn_calls.collect_getter_calls(token_buf.begin());
-        fn_calls.getters
+        this.parse(token_buf.begin());
+        this.getter_defs
     }
 
-    fn collect_getter_calls(&mut self, mut rest: Cursor) {
+    fn parse(&mut self, mut rest: Cursor) {
+        use NonGetterReason::*;
+
         while let Some((tt, next)) = rest.token_tree() {
             // Find patterns `.get_suffix()`
             match tt {
                 TokenTree::Punct(punct) => {
                     let char_ = punct.as_char();
                     match self.state.take() {
-                        State::MaybeGetter(getter) => {
+                        State::MaybeGetterArgList(getter) => {
                             if char_ == '&' {
                                 self.state = State::MaybeGetterRef(getter);
+                            } else {
+                                getter::skip(self.scope, getter.name, &NotAMethod, getter.line);
                             }
                         }
-                        State::MaybeGetterSelf(getter) => {
-                            if char_ == '-' {
-                                self.state = State::MaybeGetterRet(getter);
+                        State::MaybeGetterSelf(getter) => match char_ {
+                            '-' => self.state = State::MaybeGetterRet(getter),
+                            ',' => {
+                                getter::skip(self.scope, getter.name, &MultipleArgs, getter.line);
                             }
-                        }
+                            _ => (),
+                        },
                         State::MaybeGetterRet(getter) => {
                             if char_ == '>' {
                                 self.state = State::MaybeGetterRet(getter);
+                            }
+                        }
+                        State::MaybeGetter(getter) => {
+                            if char_ == '<' {
+                                getter::skip(
+                                    self.scope,
+                                    getter.name,
+                                    &GenericTypeParam,
+                                    getter.line,
+                                );
                             }
                         }
                         _ => (),
@@ -56,45 +75,67 @@ impl GetterDefs {
                         }
                     }
                     State::Fn => {
-                        if let Ok(get_fn) = GetFunction::try_from(ident.to_string()) {
-                            self.state = State::MaybeGetter(Getter {
-                                line_idx: ident.span().start().line - 1,
-                                get_fn,
-                                returns_bool: false,
-                            });
+                        let res = GetterDef::try_new(
+                            ident.to_string(),
+                            ReturnsBool::Maybe,
+                            ident.span().start().line,
+                            // easier to add all doc aliases everywhere
+                            // than parsing scopes in macros
+                            true,
+                        );
+                        match res {
+                            Ok(getter) => {
+                                // Will log when the getter is confirmed
+                                self.state = State::MaybeGetter(getter)
+                            }
+                            Err(err) => getter::log_err(self.scope, &err),
                         }
                     }
                     State::MaybeGetterRef(getter) => {
                         if ident == "self" {
                             self.state = State::MaybeGetterSelf(getter);
+                        } else {
+                            getter::skip(self.scope, getter.name, &NotAMethod, getter.line);
                         }
                     }
                     State::MaybeGetterRet(mut getter) => {
-                        if ident == "bool" {
-                            getter.returns_bool = true;
+                        getter.returns_bool = (ident == "bool").into();
+                        self.process(getter);
+                    }
+                    State::MaybeGetterSelf(getter) => {
+                        getter::skip(self.scope, getter.name, &NonSelfUniqueArg, getter.line);
+                    }
+                    State::MaybeGetterArgList(getter) => {
+                        if ident != "self" {
+                            getter::skip(self.scope, getter.name, &NotAMethod, getter.line);
                         }
-
-                        self.getters.push(getter);
+                        // else is unlikely: a getter consuming self
                     }
                     _ => (),
                 },
                 TokenTree::Group(group) => {
                     match self.state.take() {
-                        State::MaybeGetterRet(getter) => {
+                        State::MaybeGetterRet(mut getter) => {
                             // Returning complexe type
-                            self.getters.push(getter);
+                            getter.returns_bool = false.into();
+                            self.process(getter);
                         }
                         State::MaybeGetter(getter) => {
                             if group.delimiter() == Delimiter::Parenthesis {
-                                // might introduce the argument list
-                                self.state = State::MaybeGetter(getter);
+                                if !group.stream().is_empty() {
+                                    self.state = State::MaybeGetterArgList(getter);
+                                } else {
+                                    getter::skip(self.scope, getter.name, &NoArgs, getter.line);
+                                }
                             }
                         }
                         _ => (),
                     }
 
-                    let token_buf = TokenBuffer::new2(group.stream());
-                    self.collect_getter_calls(token_buf.begin());
+                    if !group.stream().is_empty() {
+                        let token_buf = TokenBuffer::new2(group.stream());
+                        self.parse(token_buf.begin());
+                    }
                 }
                 TokenTree::Literal(_) => self.state = State::None,
             }
@@ -102,16 +143,28 @@ impl GetterDefs {
             rest = next;
         }
     }
+
+    fn process(&mut self, mut getter: GetterDef) {
+        // When the getter was built, we didn't know the return type yet
+        // Try renaming again know that we know better.
+        if getter.returns_bool.is_true() {
+            getter.new_name = rules::try_rename_getter(&getter.name, getter.returns_bool)
+                .expect("Already checked");
+        }
+
+        self.getter_defs.push(getter);
+    }
 }
 
 #[derive(Debug)]
 enum State {
     None,
     Fn,
-    MaybeGetter(Getter),
-    MaybeGetterRef(Getter),
-    MaybeGetterSelf(Getter),
-    MaybeGetterRet(Getter),
+    MaybeGetter(GetterDef),
+    MaybeGetterArgList(GetterDef),
+    MaybeGetterRef(GetterDef),
+    MaybeGetterSelf(GetterDef),
+    MaybeGetterRet(GetterDef),
 }
 
 impl State {

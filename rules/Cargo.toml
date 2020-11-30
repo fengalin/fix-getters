@@ -8,4 +8,9 @@ edition = "2018"
 
 [dependencies]
 lazy_static = "1"
-syn = { version = "1.0", default-features = false, features = ["full"] }
+
+[features]
+default = ["dir-entry"]
+
+# dir_entry module.
+dir-entry = []

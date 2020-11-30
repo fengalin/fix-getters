@@ -10,6 +10,10 @@ static My_STATIC: u64 = MyType::get_no_self(42u64);
 
 macro_rules! get_via_macro (
     ($self: expr) => ({
+        let _ = $self.get_do_ts_param::<u64>();
+        let _ = $self.get_activable();
+        let _ = $self.get_result();
+        let _ = $self.get_multiple_arg(42u64);
         let ret = $self.get_foo();
         ret
     })
@@ -21,6 +25,7 @@ const fn get_no_self(other: u64) -> u64 {
 
 fn from_my_type() -> u64 {
     let my_instance = MyType { foo: 42u64 };
+    let _ = my_instance.get_multiple_arg(42u64);
     let other = my_instance.get_foo();
     let other = MyType { foo: other }.get_foo();
     let other = MyType { foo: other }.get_foo_param::<u64>();
@@ -34,16 +39,23 @@ fn from_my_type_might_be_bool() -> bool {
     let _ = my_instance.get_do_ts_param::<u64>();
     let _ = my_instance.get_activable();
     let _ = my_instance.get_activable_bool();
+    let _ = my_instance.get_result();
     // This one will fail unless we introduce a list of obvious booleans.
     my_instance.get_active()
 }
 
+// From here on, these are type and method definition
+// so that the code above gets validated by rls / analyzer.
 struct MyType {
     foo: u64,
 }
 
 impl MyType {
     const fn get_no_self(other: u64) -> u64 {
+        other
+    }
+
+    fn get_multiple_arg(&self, other: u64) -> u64 {
         other
     }
 
@@ -84,6 +96,10 @@ impl MyType {
     }
 
     fn get_activable_bool(&self) -> bool {
+        true
+    }
+
+    fn get_result(&self) -> bool {
         true
     }
 }

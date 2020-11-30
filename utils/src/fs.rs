@@ -1,3 +1,6 @@
+//! Filesystem traversal.
+
+#[cfg(feature = "log")]
 use log::debug;
 use rules::dir_entry;
 use std::path::{Path, PathBuf};
@@ -18,7 +21,8 @@ where
 {
     // Traverse the crate / workspace tree
     if path.is_dir() {
-        debug!("Crate tree traversal entering {:?}", path.as_os_str());
+        #[cfg(feature = "log")]
+        debug!("entering {:?}", path.as_os_str());
 
         for entry in std::fs::read_dir(path).map_err(Error::ReadDir)? {
             let entry = entry.map_err(Error::ReadEntry)?;
@@ -27,8 +31,9 @@ where
             let is_dir = match dir_entry::check(&entry)? {
                 Directory => true,
                 RsFile => false,
-                Skip(name) => {
-                    debug!("Crate tree traversal skipping {:?}", name);
+                Skip(_name) => {
+                    #[cfg(feature = "log")]
+                    debug!("skipping {:?}", _name);
                     continue;
                 }
                 SkipUnspecified => continue,
@@ -54,6 +59,7 @@ where
         return Ok(());
     }
 
-    debug!("Crate tree traversal processing {:?}", path.as_os_str());
+    #[cfg(feature = "log")]
+    debug!("processing {:?}", path.as_os_str());
     f(&path, &output_path)
 }

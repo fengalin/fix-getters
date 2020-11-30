@@ -9,7 +9,8 @@ See the [workspace documentation](../README.md) for more details on `fix-getters
 The `rules` apply to:
 
 - file system directory entries to decide if a file should be processed or
-  if a directory branch should be skipped.
+  if a directory branch should be skipped. This requires `feature` **`dir-entry`**
+  (enabled by default).
 - functions name and signature.
 
 ## LICENSE

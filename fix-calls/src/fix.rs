@@ -1,10 +1,14 @@
+//! Rust source file level getter calls fixer.
+
 use std::borrow::Cow;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use syn::visit::Visit;
 
-use crate::{Error, GetterVisitor};
+use utils::{Error, ParseFileError};
+
+use crate::GetterCallsVisitor;
 
 /// Fixes the file at the given path.
 ///
@@ -16,23 +20,19 @@ pub(crate) fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Erro
     let syntax_tree = match syn::parse_file(&source_code) {
         Ok(syntax_tree) => syntax_tree,
         Err(error) => {
-            return Err(Error::ParseFile {
-                error,
-                filepath: path.to_owned(),
-                source_code,
-            });
+            return Err(ParseFileError::new(error, path.to_owned(), source_code).into());
         }
     };
 
-    let mut getter_visitor = GetterVisitor::default();
-    getter_visitor.visit_file(&syntax_tree);
+    let mut visitor = GetterCallsVisitor::default();
+    visitor.visit_file(&syntax_tree);
 
     let output_path = match output_path {
         Some(output_path) => output_path,
         None => path,
     };
 
-    if getter_visitor.renamable_lines.is_empty() {
+    if visitor.getter_calls.is_empty() {
         // Nothing to do for this file
         return Ok(());
     }
@@ -42,13 +42,11 @@ pub(crate) fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Erro
     let mut writer = std::io::BufWriter::new(f);
 
     for (line_idx, line) in source_code.lines().enumerate() {
-        if let Some(renames) = getter_visitor.renamable_lines.get(&line_idx) {
+        if let Some(getter_calls) = visitor.getter_calls.get(&line_idx) {
             let mut line = Cow::from(line);
-            for rename in renames {
-                // Rename call
-                let origin = format!(".{}(", rename.name());
-                let target = format!(".{}(", rename.new_name());
-
+            for getter_call in getter_calls {
+                let origin = format!(".{}(", getter_call.name);
+                let target = format!(".{}(", getter_call.new_name.as_str());
                 line = Cow::from(line.replacen(&origin, &target, 1));
             }
             writer.write(line.as_bytes()).map_err(Error::WriteFile)?;

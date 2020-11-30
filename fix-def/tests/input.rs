@@ -69,6 +69,10 @@ impl MyType {
     fn get_foo_with_param<T: From<u64>>(&self) -> T {
         self.foo.into()
     }
+
+    fn not_get(&self) -> u64 {
+        self.foo
+    }
 }
 
 macro_rules! get_from_macro(
@@ -86,9 +90,25 @@ macro_rules! get_from_macro(
                 (self.foo, self.foo == 42u64)
             }
 
+            fn get_multiple_arg(&self, other) -> bool {
+                self.foo == other
+            }
+
+            fn get_non_self_unique_arg(other: u64) -> u64 {
+                other
+            }
+
             fn get_param_from_macro<T: From<u64>>(&self) -> (T, bool) {
                 (self.foo.into(), self.foo == 42u64)
             }
+
+            fn not_get(&self) -> bool {
+                self.foo == 42u64
+            }
+        }
+
+        fn get_sandalone(arg: u64) -> u64 {
+            arg
         }
     }
 );
