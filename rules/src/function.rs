@@ -96,7 +96,7 @@ pub fn try_rename_getter(
         False => (),
         True => return Ok(rename_bool_getter(suffix)),
         Maybe => {
-            if let Some(rename) = guesstimate_boolness(suffix) {
+            if let Some(rename) = guesstimate_boolness_then_rename(suffix) {
                 return Ok(rename);
             }
         }
@@ -139,18 +139,18 @@ pub fn try_substitute(suffix: &str) -> Option<String> {
 
 /// Attempts to determine whether the getter returns a `bool` from its name.
 ///
-/// Uses the boolean prefix map and [`BOOL_ABLE_PREFIX`] as a best effort estimation.
+/// Uses the [`BOOL_SUBSTITUTES`] and [`BOOL_ABLE_PREFIX`] as a best effort estimation.
 ///
 /// Returns the name substitute if `self` seems to be returning a `bool`.
 #[inline]
-pub fn guesstimate_boolness(suffix: &str) -> Option<NewName> {
+pub fn guesstimate_boolness_then_rename(suffix: &str) -> Option<NewName> {
     if let Some(new_name) = try_substitute(suffix) {
         return Some(NewName::Substituted(new_name));
     }
 
     let splits: Vec<&str> = suffix.splitn(2, '_').collect();
     if splits[0].ends_with(BOOL_ABLE_PREFIX) {
-        Some(NewName::Substituted(format!("is_{}", suffix)))
+        Some(NewName::Fixed(format!("is_{}", suffix)))
     } else {
         None
     }
@@ -243,9 +243,9 @@ impl Display for NewName {
     }
 }
 
-impl PartialEq<str> for NewName {
-    fn eq(&self, other: &str) -> bool {
-        self.as_str() == other
+impl<T: AsRef<str>> PartialEq<T> for NewName {
+    fn eq(&self, other: &T) -> bool {
+        self.as_str() == other.as_ref()
     }
 }
 
@@ -282,3 +282,120 @@ impl Display for RenameError {
 }
 
 impl Error for RenameError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn substitution() {
+        assert_eq!(try_substitute(&"mute").unwrap(), "is_muted");
+        assert_eq!(try_substitute(&"emit_eos").unwrap(), "emits_eos");
+    }
+
+    #[test]
+    fn bool_getter_suffix() {
+        let new_name = rename_bool_getter(&"result");
+        assert!(new_name.is_regular());
+        assert_eq!(new_name, "result");
+
+        let new_name = rename_bool_getter(&"mute");
+        assert!(new_name.is_substituted());
+        assert_eq!(new_name, "is_muted");
+
+        let new_name = rename_bool_getter(&"emit_eos");
+        assert!(new_name.is_substituted());
+        assert_eq!(new_name, "emits_eos");
+
+        let new_name = rename_bool_getter(&"activable");
+        assert!(new_name.is_fixed());
+        assert_eq!(new_name, "is_activable");
+    }
+
+    #[test]
+    fn boolness_guestimation() {
+        assert!(guesstimate_boolness_then_rename(&"result").is_none());
+
+        let new_name = guesstimate_boolness_then_rename(&"mute").unwrap();
+        assert_eq!(new_name, "is_muted");
+
+        let new_name = guesstimate_boolness_then_rename(&"activable").unwrap();
+        assert_eq!(new_name, "is_activable");
+    }
+
+    #[test]
+    fn rename_getter_non_bool() {
+        let new_name = try_rename_getter(&"get_structure", false).unwrap();
+        assert!(new_name.is_regular());
+        assert_eq!(new_name, "structure");
+
+        // Bool-alike, but not a bool
+        let new_name = try_rename_getter(&"get_activable", false).unwrap();
+        assert!(new_name.is_regular());
+        assert_eq!(new_name, "activable");
+
+        // Prefix to postfix
+        let new_name = try_rename_getter(&"get_mut_structure", false).unwrap();
+        assert!(new_name.is_fixed());
+        assert_eq!(new_name, "structure_mut");
+
+        assert!(try_rename_getter(&"get_mut", false)
+            .unwrap_err()
+            .is_reserved());
+        assert!(try_rename_getter(&"not_a_getter", false)
+            .unwrap_err()
+            .is_not_get_fn());
+    }
+
+    #[test]
+    fn rename_getter_bool() {
+        let new_name = try_rename_getter(&"get_structure", true).unwrap();
+        assert!(new_name.is_fixed());
+        assert_eq!(new_name, "is_structure");
+
+        let new_name = try_rename_getter(&"get_mute", true).unwrap();
+        assert!(new_name.is_substituted());
+        assert_eq!(new_name, "is_muted");
+
+        let new_name = try_rename_getter(&"get_emit_eos", true).unwrap();
+        assert!(new_name.is_substituted());
+        assert_eq!(new_name, "emits_eos");
+
+        let new_name = try_rename_getter(&"get_activable", true).unwrap();
+        assert!(new_name.is_fixed());
+        assert_eq!(new_name, "is_activable");
+
+        assert!(try_rename_getter(&"get_mut", true)
+            .unwrap_err()
+            .is_reserved());
+        assert!(try_rename_getter(&"not_a_getter", true)
+            .unwrap_err()
+            .is_not_get_fn());
+    }
+
+    #[test]
+    fn rename_getter_maybe_bool() {
+        let new_name = try_rename_getter(&"get_structure", ReturnsBool::Maybe).unwrap();
+        assert!(new_name.is_regular());
+        assert_eq!(new_name, "structure");
+
+        let new_name = try_rename_getter(&"get_mute", ReturnsBool::Maybe).unwrap();
+        assert!(new_name.is_substituted());
+        assert_eq!(new_name, "is_muted");
+
+        let new_name = try_rename_getter(&"get_emit_eos", ReturnsBool::Maybe).unwrap();
+        assert!(new_name.is_substituted());
+        assert_eq!(new_name, "emits_eos");
+
+        let new_name = try_rename_getter(&"get_activable", ReturnsBool::Maybe).unwrap();
+        assert!(new_name.is_fixed());
+        assert_eq!(new_name, "is_activable");
+
+        assert!(try_rename_getter(&"get_mut", ReturnsBool::Maybe)
+            .unwrap_err()
+            .is_reserved());
+        assert!(try_rename_getter(&"not_a_getter", ReturnsBool::Maybe)
+            .unwrap_err()
+            .is_not_get_fn());
+    }
+}
