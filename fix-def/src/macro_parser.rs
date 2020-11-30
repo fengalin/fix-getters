@@ -56,7 +56,7 @@ impl<'scope> GetterDefsCollector<'scope> {
                             _ => (),
                         },
                         State::MaybeGetterRet(getter) => {
-                            if char_ == '>' {
+                            if let '>' | '&' = char_ {
                                 self.state = State::MaybeGetterRet(getter);
                             }
                         }
@@ -99,13 +99,15 @@ impl<'scope> GetterDefsCollector<'scope> {
                     State::MaybeGetterRef(getter) => {
                         if ident == "self" {
                             self.state = State::MaybeGetterSelf(getter);
+                        } else if ident == "mut" {
+                            self.state = State::MaybeGetterRef(getter);
                         } else {
                             getter::skip(self.scope, getter.name(), &NotAMethod, getter.line());
                         }
                     }
                     State::MaybeGetterRet(mut getter) => {
                         getter.set_returns_bool(ident == "bool");
-                        self.process(getter);
+                        self.getter_defs.push(getter);
                     }
                     State::MaybeGetterSelf(getter) => {
                         getter::skip(self.scope, getter.name(), &NonSelfUniqueArg, getter.line());
@@ -123,7 +125,7 @@ impl<'scope> GetterDefsCollector<'scope> {
                         State::MaybeGetterRet(mut getter) => {
                             // Returning complexe type
                             getter.set_returns_bool(false);
-                            self.process(getter);
+                            self.getter_defs.push(getter);
                         }
                         State::MaybeGetter(getter) => {
                             if group.delimiter() == Delimiter::Parenthesis {
@@ -147,10 +149,6 @@ impl<'scope> GetterDefsCollector<'scope> {
 
             rest = next;
         }
-    }
-
-    fn process(&mut self, getter: GetterDef) {
-        self.getter_defs.push(getter);
     }
 }
 
