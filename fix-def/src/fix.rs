@@ -42,15 +42,15 @@ pub(crate) fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Erro
 
     for (line_idx, line) in source_code.lines().enumerate() {
         if let Some(getter_defs) = visitor.getter_defs.get(&line_idx) {
-            if getter_defs.needs_doc_alias {
+            if getter_defs.needs_doc_alias() {
                 writer
-                    .write_fmt(format_args!("#[doc(alias = \"{}\")] ", getter_defs.name))
+                    .write_fmt(format_args!("#[doc(alias = \"{}\")] ", getter_defs.name()))
                     .map_err(Error::WriteFile)?;
             }
 
             // Rename getter
-            let origin = format!("fn {}(", getter_defs.name);
-            let target = format!("fn {}(", getter_defs.new_name.as_str());
+            let origin = format!("fn {}(", getter_defs.name());
+            let target = format!("fn {}(", getter_defs.new_name().as_str());
 
             writer
                 .write(line.replacen(&origin, &target, 1).as_bytes())

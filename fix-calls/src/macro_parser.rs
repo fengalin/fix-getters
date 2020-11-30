@@ -39,7 +39,7 @@ impl<'scope> GetterCallsCollector<'scope> {
                             if let State::MaybeGetter(getter) = self.state.take() {
                                 getter::skip(
                                     self.scope,
-                                    getter.name,
+                                    &getter.name,
                                     &GenericTypeParam,
                                     getter.line,
                                 );
@@ -60,7 +60,7 @@ impl<'scope> GetterCallsCollector<'scope> {
                                 // Will log when the getter is confirmed
                                 self.state = State::MaybeGetter(getter)
                             }
-                            Err(err) => getter::log_err(self.scope, &err),
+                            Err(err) => err.log(self.scope),
                         }
                     }
                 }
@@ -72,7 +72,7 @@ impl<'scope> GetterCallsCollector<'scope> {
                                 getter.log(self.scope);
                                 self.getter_calls.push(getter);
                             } else {
-                                getter::skip(self.scope, getter.name, &MultipleArgs, getter.line);
+                                getter::skip(self.scope, &getter.name, &MultipleArgs, getter.line);
                             }
                         }
                     }

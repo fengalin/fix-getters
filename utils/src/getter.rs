@@ -29,9 +29,21 @@ pub struct GetterError {
     pub line: usize,
 }
 
+impl GetterError {
+    /// Logs details about the getter creation failure at the appropriate log level.
+    #[cfg(feature = "log")]
+    pub fn log(&self, scope: &dyn Display) {
+        if !self.err.is_not_get_fn() {
+            debug!("* {} {}", scope, self);
+        } else {
+            trace!("* {} {}", scope, self);
+        }
+    }
+}
+
 impl Display for GetterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "skipping {}() {} @ {}", self.name, self.err, self.line)
+        write!(f, "@ {}: skipping {}() {}", self.line, self.name, self.err)
     }
 }
 
@@ -55,35 +67,15 @@ impl Getter {
         }
     }
 
-    /// Attempts to build a `Getter` from the provided data and log the result.
-    #[cfg(feature = "log")]
-    pub fn try_new_and_log(
-        scope: &dyn Display,
-        name: String,
-        returns_bool: impl Into<ReturnsBool> + Copy,
-        line: usize,
-    ) -> Result<Self, GetterError> {
-        match Self::try_new(name, returns_bool, line) {
-            Ok(getter) => {
-                getter.log(scope);
-                Ok(getter)
-            }
-            Err(err) => {
-                log_err(scope, &err);
-                Err(err)
-            }
-        }
-    }
-
     /// Logs details about the getter at the appropriate log level.
     #[cfg(feature = "log")]
     pub fn log(&self, scope: &dyn Display) {
         if self.new_name.is_fixed() {
-            debug!("* {}: {}", scope, self);
+            debug!("* {} {}", scope, self);
         } else if self.new_name.is_substituted() {
-            warn!("* {}: {}", scope, self);
+            warn!("* {} {}", scope, self);
         } else {
-            trace!("* {}: {}", scope, self);
+            trace!("* {} {}", scope, self);
         }
     }
 }
@@ -92,31 +84,22 @@ impl Display for Getter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use ReturnsBool::*;
         let return_str = match self.returns_bool {
-            False | Maybe => "",
+            False => "",
             True => " -> bool",
+            Maybe => " -> ?",
         };
         write!(
             f,
-            "{}(){} {}() @ {}",
-            self.name, return_str, self.new_name, self.line
+            "@ {}: {}(){} {}()",
+            self.line, self.name, return_str, self.new_name,
         )
-    }
-}
-
-/// Logs the failed attempt at renaming a would be getter.
-#[cfg(feature = "log")]
-pub fn log_err(scope: &dyn Display, err: &GetterError) {
-    if !err.err.is_not_get_fn() {
-        debug!("* {}: {}", scope, err);
-    } else {
-        trace!("* {}: {}", scope, err);
     }
 }
 
 /// Logs the reason for skipping the `name` function.
 #[cfg(feature = "log")]
-pub fn skip(scope: &dyn Display, name: String, reason: &dyn Display, line: usize) {
-    debug!("* {}: skipping {}() {} @ {}", scope, name, reason, line);
+pub fn skip(scope: &dyn Display, name: &str, reason: &dyn Display, line: usize) {
+    debug!("* {} @ {}: skipping {}() {}", scope, line, name, reason);
 }
 
 /// Reason for considering a function is not a getter.

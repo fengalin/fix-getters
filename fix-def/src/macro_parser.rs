@@ -40,13 +40,18 @@ impl<'scope> GetterDefsCollector<'scope> {
                             if char_ == '&' {
                                 self.state = State::MaybeGetterRef(getter);
                             } else {
-                                getter::skip(self.scope, getter.name, &NotAMethod, getter.line);
+                                getter::skip(self.scope, getter.name(), &NotAMethod, getter.line());
                             }
                         }
                         State::MaybeGetterSelf(getter) => match char_ {
                             '-' => self.state = State::MaybeGetterRet(getter),
                             ',' => {
-                                getter::skip(self.scope, getter.name, &MultipleArgs, getter.line);
+                                getter::skip(
+                                    self.scope,
+                                    getter.name(),
+                                    &MultipleArgs,
+                                    getter.line(),
+                                );
                             }
                             _ => (),
                         },
@@ -59,9 +64,9 @@ impl<'scope> GetterDefsCollector<'scope> {
                             if char_ == '<' {
                                 getter::skip(
                                     self.scope,
-                                    getter.name,
+                                    getter.name(),
                                     &GenericTypeParam,
-                                    getter.line,
+                                    getter.line(),
                                 );
                             }
                         }
@@ -88,26 +93,26 @@ impl<'scope> GetterDefsCollector<'scope> {
                                 // Will log when the getter is confirmed
                                 self.state = State::MaybeGetter(getter)
                             }
-                            Err(err) => getter::log_err(self.scope, &err),
+                            Err(err) => err.log(self.scope),
                         }
                     }
                     State::MaybeGetterRef(getter) => {
                         if ident == "self" {
                             self.state = State::MaybeGetterSelf(getter);
                         } else {
-                            getter::skip(self.scope, getter.name, &NotAMethod, getter.line);
+                            getter::skip(self.scope, getter.name(), &NotAMethod, getter.line());
                         }
                     }
                     State::MaybeGetterRet(mut getter) => {
-                        getter.returns_bool = (ident == "bool").into();
+                        getter.set_returns_bool(ident == "bool");
                         self.process(getter);
                     }
                     State::MaybeGetterSelf(getter) => {
-                        getter::skip(self.scope, getter.name, &NonSelfUniqueArg, getter.line);
+                        getter::skip(self.scope, getter.name(), &NonSelfUniqueArg, getter.line());
                     }
                     State::MaybeGetterArgList(getter) => {
                         if ident != "self" {
-                            getter::skip(self.scope, getter.name, &NotAMethod, getter.line);
+                            getter::skip(self.scope, getter.name(), &NotAMethod, getter.line());
                         }
                         // else is unlikely: a getter consuming self
                     }
@@ -117,7 +122,7 @@ impl<'scope> GetterDefsCollector<'scope> {
                     match self.state.take() {
                         State::MaybeGetterRet(mut getter) => {
                             // Returning complexe type
-                            getter.returns_bool = false.into();
+                            getter.set_returns_bool(false);
                             self.process(getter);
                         }
                         State::MaybeGetter(getter) => {
@@ -125,7 +130,7 @@ impl<'scope> GetterDefsCollector<'scope> {
                                 if !group.stream().is_empty() {
                                     self.state = State::MaybeGetterArgList(getter);
                                 } else {
-                                    getter::skip(self.scope, getter.name, &NoArgs, getter.line);
+                                    getter::skip(self.scope, getter.name(), &NoArgs, getter.line());
                                 }
                             }
                         }
@@ -144,14 +149,7 @@ impl<'scope> GetterDefsCollector<'scope> {
         }
     }
 
-    fn process(&mut self, mut getter: GetterDef) {
-        // When the getter was built, we didn't know the return type yet
-        // Try renaming again know that we know better.
-        if getter.returns_bool.is_true() {
-            getter.new_name = rules::try_rename_getter(&getter.name, getter.returns_bool)
-                .expect("Already checked");
-        }
-
+    fn process(&mut self, getter: GetterDef) {
         self.getter_defs.push(getter);
     }
 }

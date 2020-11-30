@@ -14,14 +14,11 @@ use std::{
 };
 use utils::{fs, Getter, GetterError};
 
-use rules::{NewName, ReturnsBool};
+use rules::{function, NewName, ReturnsBool};
 
 #[derive(Debug)]
 struct GetterDef {
-    name: String,
-    new_name: NewName,
-    returns_bool: ReturnsBool,
-    line: usize,
+    getter: Getter,
     needs_doc_alias: bool,
 }
 
@@ -32,44 +29,60 @@ impl GetterDef {
         line: usize,
         needs_doc_alias: bool,
     ) -> Result<Self, GetterError> {
-        Getter::try_new(name, returns_bool, line)
-            .map(|getter| GetterDef::from(getter, needs_doc_alias))
-    }
-
-    fn try_new_and_log(
-        scope: &dyn Display,
-        name: String,
-        returns_bool: impl Into<ReturnsBool> + Copy,
-        line: usize,
-        needs_doc_alias: bool,
-    ) -> Result<Self, GetterError> {
-        Getter::try_new_and_log(scope, name, returns_bool, line)
-            .map(|getter| GetterDef::from(getter, needs_doc_alias))
-    }
-
-    fn from(getter: Getter, needs_doc_alias: bool) -> Self {
-        GetterDef {
-            name: getter.name,
-            new_name: getter.new_name,
-            line: getter.line,
+        Getter::try_new(name, returns_bool, line).map(|getter| GetterDef {
+            getter,
             needs_doc_alias,
-            returns_bool: getter.returns_bool,
+        })
+    }
+
+    fn name(&self) -> &str {
+        &self.getter.name
+    }
+
+    fn new_name(&self) -> &NewName {
+        &self.getter.new_name
+    }
+
+    fn set_returns_bool(&mut self, returns_bool: impl Into<ReturnsBool>) {
+        let returns_bool = returns_bool.into();
+        if self.getter.returns_bool != returns_bool {
+            self.getter.returns_bool = returns_bool;
+
+            if returns_bool.is_true() {
+                self.getter.new_name = function::rename_bool_getter(
+                    self.getter
+                        .name
+                        .strip_prefix("get_")
+                        .expect("prefix already checked"),
+                );
+            }
         }
+    }
+
+    fn line(&self) -> usize {
+        self.getter.line
+    }
+
+    fn needs_doc_alias(&self) -> bool {
+        self.needs_doc_alias
+    }
+
+    fn log(&self, scope: &dyn Display) {
+        self.getter.log(scope);
     }
 }
 
 impl Display for GetterDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use ReturnsBool::*;
-        let return_str = match self.returns_bool {
-            False => "",
-            True => " -> bool",
-            Maybe => " -> maybe bool",
-        };
         write!(
             f,
-            "{}(){} {}() @ {}",
-            self.name, return_str, self.new_name, self.line
+            "{}{}",
+            self.getter,
+            if self.needs_doc_alias {
+                " needs doc alias"
+            } else {
+                ""
+            },
         )
     }
 }

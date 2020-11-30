@@ -20,7 +20,7 @@ pub(crate) struct GetterDefsVisitor {
 impl GetterDefsVisitor {
     fn add(&mut self, getter_def: GetterDef) {
         // convert line nb to line idx
-        let line_idx = getter_def.line - 1;
+        let line_idx = getter_def.line() - 1;
         if self.getter_defs.insert(line_idx, getter_def).is_some() {
             panic!("Found more than one getter definition @ {}", line_idx + 1);
         }
@@ -36,8 +36,7 @@ impl GetterDefsVisitor {
             _ => return,
         };
 
-        let res = GetterDef::try_new_and_log(
-            &self.scope(),
+        let res = GetterDef::try_new(
             sig.ident.to_string(),
             Self::returns_bool(sig),
             sig.ident.span().start().line,
@@ -45,31 +44,45 @@ impl GetterDefsVisitor {
         );
         let getter = match res {
             Ok(getter) => getter,
-            Err(_) => return,
+            Err(err) => {
+                err.log(&self.scope());
+                return;
+            }
         };
 
         if !sig.generics.params.is_empty() {
-            getter::skip(&self.scope(), getter.name, &GenericTypeParam, getter.line);
+            getter::skip(
+                &self.scope(),
+                getter.name(),
+                &GenericTypeParam,
+                getter.line(),
+            );
             return;
         }
 
         if sig.inputs.len() > 1 {
-            getter::skip(&self.scope(), getter.name, &MultipleArgs, getter.line);
+            getter::skip(&self.scope(), getter.name(), &MultipleArgs, getter.line());
             return;
         }
 
         match sig.inputs.first() {
             Some(syn::FnArg::Receiver { .. }) => (),
             Some(_) => {
-                getter::skip(&self.scope(), getter.name, &NonSelfUniqueArg, getter.line);
+                getter::skip(
+                    &self.scope(),
+                    getter.name(),
+                    &NonSelfUniqueArg,
+                    getter.line(),
+                );
                 return;
             }
             None => {
-                getter::skip(&self.scope(), getter.name, &NoArgs, getter.line);
+                getter::skip(&self.scope(), getter.name(), &NoArgs, getter.line());
                 return;
             }
         }
 
+        getter.log(&self.scope());
         self.add(getter);
     }
 

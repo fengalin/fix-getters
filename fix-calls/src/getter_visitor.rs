@@ -31,27 +31,30 @@ impl GetterCallsVisitor {
     fn process(&mut self, method_call: &syn::ExprMethodCall) {
         use NonGetterReason::*;
 
-        let res = Getter::try_new_and_log(
-            &self.scope(),
+        let res = Getter::try_new(
             method_call.method.to_string(),
             ReturnsBool::Maybe,
             method_call.method.span().start().line,
         );
         let getter = match res {
             Ok(getter) => getter,
-            Err(_) => return,
+            Err(err) => {
+                err.log(&self.scope());
+                return;
+            }
         };
 
         if method_call.turbofish.is_some() {
-            getter::skip(&self.scope(), getter.name, &GenericTypeParam, getter.line);
+            getter::skip(&self.scope(), &getter.name, &GenericTypeParam, getter.line);
             return;
         }
 
         if !method_call.args.is_empty() {
-            getter::skip(&self.scope(), getter.name, &MultipleArgs, getter.line);
+            getter::skip(&self.scope(), &getter.name, &MultipleArgs, getter.line);
             return;
         }
 
+        getter.log(&self.scope());
         self.add(getter);
     }
 
