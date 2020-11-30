@@ -1,74 +1,72 @@
 //! Would-be-getter renaming rules definition.
 
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
     fmt::{self, Display},
 };
 
-lazy_static! {
-    /// Getters reserved suffix list.
-    ///
-    /// Getter that we don't want to rename because
-    /// they are reserved words or would result confusing.
-    pub static ref RESERVED: HashSet<&'static str> ={
-        let mut reserved = HashSet::new();
-        reserved.insert("");
-        reserved.insert("impl");
-        reserved.insert("loop");
-        reserved.insert("mut");
-        reserved.insert("optional");
-        reserved.insert("owned");
-        reserved.insert("ref");
-        reserved.insert("some");
-        reserved.insert("type");
-        reserved
-    };
+/// Getters reserved suffix list.
+///
+/// Getter that we don't want to rename because
+/// they are reserved words or would result confusing.
+pub static RESERVED: Lazy<HashSet<&'static str>> = Lazy::new(|| {
+    let mut reserved = HashSet::new();
+    reserved.insert("");
+    reserved.insert("impl");
+    reserved.insert("loop");
+    reserved.insert("mut");
+    reserved.insert("optional");
+    reserved.insert("owned");
+    reserved.insert("ref");
+    reserved.insert("some");
+    reserved.insert("type");
+    reserved
+});
 
-    /// Substitutes for getters returning a `bool`.
-    ///
-    /// The convention is to rename `bool` getters `get_suffix` as `is_suffix`,
-    /// but there are cases for which we want a better name:
-    ///
-    /// - `get_mute` -> `is_muted`.
-    /// - `get_emit_eos` -> `emits_eos`.
-    pub static ref BOOL_SUBSTITUTES: HashMap<&'static str, &'static str> ={
-        let mut bool_substitutes = HashMap::new();
-        bool_substitutes.insert("do", "does");
-        bool_substitutes.insert("emit", "emits");
-        bool_substitutes.insert("fill", "fills");
-        bool_substitutes.insert("mute", "is_muted");
-        bool_substitutes.insert("reset", "resets");
-        bool_substitutes.insert("show", "shows");
-        bool_substitutes
-    };
+/// Substitutes for getters returning a `bool`.
+///
+/// The convention is to rename `bool` getters `get_suffix` as `is_suffix`,
+/// but there are cases for which we want a better name:
+///
+/// - `get_mute` -> `is_muted`.
+/// - `get_emit_eos` -> `emits_eos`.
+pub static BOOL_SUBSTITUTES: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
+    let mut bool_substitutes = HashMap::new();
+    bool_substitutes.insert("do", "does");
+    bool_substitutes.insert("emit", "emits");
+    bool_substitutes.insert("fill", "fills");
+    bool_substitutes.insert("mute", "is_muted");
+    bool_substitutes.insert("reset", "resets");
+    bool_substitutes.insert("show", "shows");
+    bool_substitutes
+});
 
-    /// Set of getters returning a `bool` which should be handle as regular getters.
-    ///
-    /// The convention is to rename `bool` getters `get_suffix` as `is_suffix`,
-    /// but there are cases for which we want to apply the regular getter rule:
-    ///
-    /// - `get_result` -> `result`.
-    pub static ref BOOL_AS_REGULAR: HashSet<&'static str> ={
-        let mut bool_as_regular = HashSet::new();
-        bool_as_regular.insert("result");
-        bool_as_regular
-    };
+/// Set of getters returning a `bool` which should be handle as regular getters.
+///
+/// The convention is to rename `bool` getters `get_suffix` as `is_suffix`,
+/// but there are cases for which we want to apply the regular getter rule:
+///
+/// - `get_result` -> `result`.
+pub static BOOL_AS_REGULAR: Lazy<HashSet<&'static str>> = Lazy::new(|| {
+    let mut bool_as_regular = HashSet::new();
+    bool_as_regular.insert("result");
+    bool_as_regular
+});
 
-    /// Getters prefix to move to the end.
-    ///
-    /// The convention is to use the form:
-    /// - `get_structure_mut`.
-    ///
-    /// but we can run into this one too:
-    /// - `get_mut_structure`.
-    pub static ref PREFIX_TO_POSTFIX: HashSet<&'static str> ={
-        let mut prefix_to_postfix = HashSet::new();
-        prefix_to_postfix.insert("mut");
-        prefix_to_postfix
-    };
-}
+/// Getters prefix to move to the end.
+///
+/// The convention is to use the form:
+/// - `get_structure_mut`.
+///
+/// but we can run into this one too:
+/// - `get_mut_structure`.
+pub static PREFIX_TO_POSTFIX: Lazy<HashSet<&'static str>> = Lazy::new(|| {
+    let mut prefix_to_postfix = HashSet::new();
+    prefix_to_postfix.insert("mut");
+    prefix_to_postfix
+});
 
 /// Special suffix to detect getters returning a `bool`.
 ///
@@ -126,7 +124,7 @@ pub fn rename_bool_getter(suffix: &str) -> NewName {
 
 /// Attempts to apply special substitutions for boolean getters.
 ///
-/// The substitutions are defined in [`BOOL_SUBSTITUTES`](`struct@BOOL_SUBSTITUTES`).
+/// The substitutions are defined in [`BOOL_SUBSTITUTES`].
 #[inline]
 pub fn try_substitute(suffix: &str) -> Option<String> {
     let splits: Vec<&str> = suffix.splitn(2, '_').collect();

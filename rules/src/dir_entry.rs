@@ -1,29 +1,27 @@
 //! Directory entry filtering.
 
-use lazy_static::lazy_static;
-use std::collections::HashSet;
-use std::fs::DirEntry;
-use std::io;
+use once_cell::sync::Lazy;
 use std::{
+    collections::HashSet,
     error::Error,
     fmt::{self, Display},
+    fs::DirEntry,
+    io,
 };
 
-lazy_static! {
-    /// Directories to exclude from the fix process.
-    pub static ref EXCLUDED: HashSet<&'static str> ={
-        let mut excluded = HashSet::new();
-        excluded.insert(".git");
-        excluded.insert("auto");
-        excluded.insert("ci");
-        excluded.insert("docs");
-        excluded.insert("gir");
-        excluded.insert("gir-files");
-        excluded.insert("target");
-        excluded.insert("sys");
-        excluded
-    };
-}
+/// Directories to exclude from the fix process.
+pub static EXCLUDED: Lazy<HashSet<&'static str>> = Lazy::new(|| {
+    let mut excluded = HashSet::new();
+    excluded.insert(".git");
+    excluded.insert("auto");
+    excluded.insert("ci");
+    excluded.insert("docs");
+    excluded.insert("gir");
+    excluded.insert("gir-files");
+    excluded.insert("target");
+    excluded.insert("sys");
+    excluded
+});
 
 /// Checks the given directory entry.
 #[inline]
