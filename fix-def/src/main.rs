@@ -28,7 +28,7 @@ struct GetterDef {
 impl GetterDef {
     fn try_new(
         name: String,
-        returns_bool: ReturnsBool,
+        returns_bool: impl Into<ReturnsBool> + Copy,
         line: usize,
         needs_doc_alias: bool,
     ) -> Result<Self, GetterError> {
@@ -39,7 +39,7 @@ impl GetterDef {
     fn try_new_and_log(
         scope: &dyn Display,
         name: String,
-        returns_bool: ReturnsBool,
+        returns_bool: impl Into<ReturnsBool> + Copy,
         line: usize,
         needs_doc_alias: bool,
     ) -> Result<Self, GetterError> {

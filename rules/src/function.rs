@@ -77,9 +77,13 @@ pub const BOOL_ABLE_PREFIX: &str = "able";
 
 /// Attempts to apply getter name rules to this function name.
 ///
-/// The `returns_bool` function will be executed if necessary,
-/// to check whether the getter returns exactly one `bool`.
-pub fn try_rename_getter(name: &str, returns_bool: ReturnsBool) -> Result<NewName, RenameError> {
+/// The argument `returns_bool` hints the renaming process when
+/// the getter returns a unique `bool` value. Use [`ReturnsBool::Maybe`]
+/// if the return value is not known.
+pub fn try_rename_getter(
+    name: &str,
+    returns_bool: impl Into<ReturnsBool>,
+) -> Result<NewName, RenameError> {
     let suffix = match name.strip_prefix("get_") {
         Some(suffix) => suffix,
         None => return Err(RenameError::NotGetFn),
@@ -90,7 +94,7 @@ pub fn try_rename_getter(name: &str, returns_bool: ReturnsBool) -> Result<NewNam
     }
 
     use ReturnsBool::*;
-    match returns_bool {
+    match returns_bool.into() {
         False => (),
         True => return Ok(rename_bool_getter(suffix)),
         Maybe => {

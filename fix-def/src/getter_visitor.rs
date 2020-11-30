@@ -39,7 +39,7 @@ impl GetterDefsVisitor {
         let res = GetterDef::try_new_and_log(
             &self.scope(),
             sig.ident.to_string(),
-            Self::returns_bool(sig).into(),
+            Self::returns_bool(sig),
             sig.ident.span().start().line,
             needs_doc_alias,
         );

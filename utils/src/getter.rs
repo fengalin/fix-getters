@@ -41,7 +41,7 @@ impl Getter {
     /// Attempts to build a `Getter` from the provided data.
     pub fn try_new(
         name: String,
-        returns_bool: ReturnsBool,
+        returns_bool: impl Into<ReturnsBool> + Copy,
         line: usize,
     ) -> Result<Self, GetterError> {
         match rules::try_rename_getter(&name, returns_bool) {
@@ -49,7 +49,7 @@ impl Getter {
                 name,
                 new_name,
                 line,
-                returns_bool,
+                returns_bool: returns_bool.into(),
             }),
             Err(err) => Err(GetterError { name, err, line }),
         }
@@ -60,7 +60,7 @@ impl Getter {
     pub fn try_new_and_log(
         scope: &dyn Display,
         name: String,
-        returns_bool: ReturnsBool,
+        returns_bool: impl Into<ReturnsBool> + Copy,
         line: usize,
     ) -> Result<Self, GetterError> {
         match Self::try_new(name, returns_bool, line) {
