@@ -2,9 +2,12 @@
 name = "fix-getters-def"
 version = "0.1.0"
 authors = ["François Laignel <fengalin@free.fr>"]
+categories = ["development-tools", "command-line-utilities"]
 description = "Fix getters definition by removing the get_ prefix when applicable"
+keywords = ["rust", "code", "getter", "programming", "migration"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
+repository = "https://github.com/fengalin/fix-getters"
 edition = "2018"
 
 [dependencies]

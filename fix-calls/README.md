@@ -7,8 +7,8 @@ See the [workspace documentation](../README.md) for more details on `fix-getters
 
 ## Install
 
-You can install `fix-getters-calls` using `cargo`, which allows invoking it like a
-regular command.
+You can install `fix-getters-calls` using `cargo`, which allows invoking the
+tool as a regular command.
 
 ```
 cd fix-getters/fix-calls
@@ -17,7 +17,7 @@ cargo install --path .
 
 ## Usage
 
-**Warning:** by default, `fix-getters-calls` will overwrite the existing files.
+**Warning:** by default, `fix-getters-calls` will overwrite existing files.
 See below if you want to check the output in a separate directory.
 
 ```
@@ -43,7 +43,6 @@ you won't be able to run `cargo fmt`.
 
 ## Uninstall
 
-By default, `cargo` installs `fix-getters-calls` in its `bin` directory.
 To uninstall, launch the following command:
 
 ```

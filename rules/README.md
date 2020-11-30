@@ -13,6 +13,11 @@ The `rules` apply to:
   (enabled by default).
 - functions name and signature.
 
+## Features
+
+- **`fs`** — File system traversal helper. This features is enabled by default.
+  Use `default-features = false` if your use case differs.
+
 ## LICENSE
 
 This crate is licensed under either of

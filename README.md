@@ -1,7 +1,7 @@
 # fix-getters
 
-This repository contains crates to help with the removal of the `get_` prefix
-in existing getters.
+This repository contains crates and tools to help with the removal of the `get_`
+prefix from getters in existing Rust code.
 
 Attempts at removing those automatically or manually proved to be suboptimal.
 E.g.:
@@ -15,16 +15,20 @@ E.g.:
   However, the `[doc..]` attribute is only useful in global functions,
   `struct` `impl` or `trait` definition. It's unneeded in `trait` implementations
   for `struct`.
-- Then it's necessary to update the call sites.
+- Getters returning a `bool` are usually named `is_suffix`, but we sometimes
+  want to use verbs e.g. `emits_eos`.
+- Removing the `get_` prefix automatically can result in invalid code.
+  Ex. `get_mut`, `get_loop`, ...
+- Then it's necessary to update the getters call sites.
 
 ## Packages
 
 This workspace contains the following packages:
 
-- [rules](rules/README.md): rules which are applied during the update process.
-- [fix-def](fix-def/README.md): tool which updates the getters definition.
-- [fix-calls](fix-calls/README.md): tool which updates the getters call sites.
-- [utils](utils/README.md): functions which are common to the fix-getters tools.
+- [rules](rules/README.md): rules to apply during the update process.
+- [fix-def](fix-def/README.md): a tool to update the getters definition.
+- [fix-calls](fix-calls/README.md): a tool to update the getters call sites.
+- [utils](utils/README.md): common functions to the fix-getters tools.
 
 ## LICENSE
 
