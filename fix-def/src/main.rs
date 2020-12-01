@@ -14,7 +14,7 @@ use std::{
 };
 use utils::{fs, Getter, GetterError};
 
-use rules::{function, NewName, ReturnsBool};
+use rules::{function, getter_suffix, NewName, ReturnsBool};
 
 #[derive(Debug)]
 struct GetterDef {
@@ -50,10 +50,7 @@ impl GetterDef {
 
             if returns_bool.is_true() {
                 self.getter.new_name = function::rename_bool_getter(
-                    self.getter
-                        .name
-                        .strip_prefix("get_")
-                        .expect("prefix already checked"),
+                    getter_suffix(&self.getter.name).expect("prefix already checked"),
                 );
             }
         }

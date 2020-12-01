@@ -56,7 +56,7 @@ impl Getter {
         returns_bool: impl Into<ReturnsBool> + Copy,
         line: usize,
     ) -> Result<Self, GetterError> {
-        match rules::try_rename_getter(&name, returns_bool) {
+        match rules::try_rename_would_be_getter(&name, returns_bool) {
             Ok(new_name) => Ok(Getter {
                 name,
                 new_name,

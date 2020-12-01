@@ -105,20 +105,32 @@ pub static PREFIX_TO_POSTFIX: Lazy<HashSet<&'static str>> = Lazy::new(|| {
 /// Ex.: `get_seekable`.
 pub const BOOL_ABLE_PREFIX: &str = "able";
 
-/// Attempts to apply getter name rules to this function name.
+/// Attempts to apply getter name rules to this would-be-getter function.
 ///
 /// The argument `returns_bool` hints the renaming process when
 /// the getter returns a unique `bool` value. Use [`ReturnsBool::Maybe`]
 /// if the return value is not known.
-pub fn try_rename_getter(
+pub fn try_rename_would_be_getter(
     name: &str,
     returns_bool: impl Into<ReturnsBool>,
 ) -> Result<NewName, RenameError> {
-    let suffix = match name.strip_prefix("get_") {
+    let suffix = match getter_suffix(name) {
         Some(suffix) => suffix,
         None => return Err(RenameError::NotGetFn),
     };
 
+    try_rename_getter_suffix(suffix, returns_bool)
+}
+
+/// Attempts to apply getter name rules to this getter suffix.
+///
+/// The argument `returns_bool` hints the renaming process when
+/// the getter returns a unique `bool` value. Use [`ReturnsBool::Maybe`]
+/// if the return value is not known.
+pub fn try_rename_getter_suffix(
+    suffix: &str,
+    returns_bool: impl Into<ReturnsBool>,
+) -> Result<NewName, RenameError> {
     if RESERVED.contains(suffix) {
         return Err(RenameError::Reserved);
     }
@@ -140,6 +152,14 @@ pub fn try_rename_getter(
     } else {
         Ok(NewName::Regular(suffix.to_string()))
     }
+}
+
+/// Retrieve the suffix from a would-be-getter function.
+///
+/// Returns `Some(*suffix*)` if name starts with `get_`.
+#[inline]
+pub fn getter_suffix(name: &str) -> Option<&str> {
+    name.strip_prefix("get_")
 }
 
 /// Applies `bool` getter name rules.
@@ -357,77 +377,79 @@ mod tests {
 
     #[test]
     fn rename_getter_non_bool() {
-        let new_name = try_rename_getter(&"get_structure", false).unwrap();
+        let new_name = try_rename_would_be_getter(&"get_structure", false).unwrap();
         assert!(new_name.is_regular());
         assert_eq!(new_name, "structure");
 
         // Bool-alike, but not a bool
-        let new_name = try_rename_getter(&"get_activable", false).unwrap();
+        let new_name = try_rename_would_be_getter(&"get_activable", false).unwrap();
         assert!(new_name.is_regular());
         assert_eq!(new_name, "activable");
 
         // Prefix to postfix
-        let new_name = try_rename_getter(&"get_mut_structure", false).unwrap();
+        let new_name = try_rename_would_be_getter(&"get_mut_structure", false).unwrap();
         assert!(new_name.is_fixed());
         assert_eq!(new_name, "structure_mut");
 
-        assert!(try_rename_getter(&"get_mut", false)
+        assert!(try_rename_would_be_getter(&"get_mut", false)
             .unwrap_err()
             .is_reserved());
-        assert!(try_rename_getter(&"not_a_getter", false)
+        assert!(try_rename_would_be_getter(&"not_a_getter", false)
             .unwrap_err()
             .is_not_get_fn());
     }
 
     #[test]
     fn rename_getter_bool() {
-        let new_name = try_rename_getter(&"get_structure", true).unwrap();
+        let new_name = try_rename_would_be_getter(&"get_structure", true).unwrap();
         assert!(new_name.is_fixed());
         assert_eq!(new_name, "is_structure");
 
-        let new_name = try_rename_getter(&"get_mute", true).unwrap();
+        let new_name = try_rename_would_be_getter(&"get_mute", true).unwrap();
         assert!(new_name.is_substituted());
         assert_eq!(new_name, "is_muted");
 
-        let new_name = try_rename_getter(&"get_emit_eos", true).unwrap();
+        let new_name = try_rename_would_be_getter(&"get_emit_eos", true).unwrap();
         assert!(new_name.is_substituted());
         assert_eq!(new_name, "emits_eos");
 
-        let new_name = try_rename_getter(&"get_activable", true).unwrap();
+        let new_name = try_rename_would_be_getter(&"get_activable", true).unwrap();
         assert!(new_name.is_fixed());
         assert_eq!(new_name, "is_activable");
 
-        assert!(try_rename_getter(&"get_mut", true)
+        assert!(try_rename_would_be_getter(&"get_mut", true)
             .unwrap_err()
             .is_reserved());
-        assert!(try_rename_getter(&"not_a_getter", true)
+        assert!(try_rename_would_be_getter(&"not_a_getter", true)
             .unwrap_err()
             .is_not_get_fn());
     }
 
     #[test]
     fn rename_getter_maybe_bool() {
-        let new_name = try_rename_getter(&"get_structure", ReturnsBool::Maybe).unwrap();
+        let new_name = try_rename_would_be_getter(&"get_structure", ReturnsBool::Maybe).unwrap();
         assert!(new_name.is_regular());
         assert_eq!(new_name, "structure");
 
-        let new_name = try_rename_getter(&"get_mute", ReturnsBool::Maybe).unwrap();
+        let new_name = try_rename_would_be_getter(&"get_mute", ReturnsBool::Maybe).unwrap();
         assert!(new_name.is_substituted());
         assert_eq!(new_name, "is_muted");
 
-        let new_name = try_rename_getter(&"get_emit_eos", ReturnsBool::Maybe).unwrap();
+        let new_name = try_rename_would_be_getter(&"get_emit_eos", ReturnsBool::Maybe).unwrap();
         assert!(new_name.is_substituted());
         assert_eq!(new_name, "emits_eos");
 
-        let new_name = try_rename_getter(&"get_activable", ReturnsBool::Maybe).unwrap();
+        let new_name = try_rename_would_be_getter(&"get_activable", ReturnsBool::Maybe).unwrap();
         assert!(new_name.is_fixed());
         assert_eq!(new_name, "is_activable");
 
-        assert!(try_rename_getter(&"get_mut", ReturnsBool::Maybe)
+        assert!(try_rename_would_be_getter(&"get_mut", ReturnsBool::Maybe)
             .unwrap_err()
             .is_reserved());
-        assert!(try_rename_getter(&"not_a_getter", ReturnsBool::Maybe)
-            .unwrap_err()
-            .is_not_get_fn());
+        assert!(
+            try_rename_would_be_getter(&"not_a_getter", ReturnsBool::Maybe)
+                .unwrap_err()
+                .is_not_get_fn()
+        );
     }
 }
