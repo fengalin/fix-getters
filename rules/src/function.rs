@@ -10,18 +10,50 @@ use std::{
 /// Getters reserved suffix list.
 ///
 /// Getter that we don't want to rename because
-/// they are reserved words or would result confusing.
+/// they are Rust keywords or would result confusing.
 pub static RESERVED: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     let mut reserved = HashSet::new();
     reserved.insert("");
+    reserved.insert("as");
+    reserved.insert("async");
+    reserved.insert("await");
+    reserved.insert("break");
+    reserved.insert("const");
+    reserved.insert("continue");
+    reserved.insert("crate");
+    reserved.insert("dyn");
+    reserved.insert("else");
+    reserved.insert("enum");
+    reserved.insert("extern");
+    reserved.insert("false");
+    reserved.insert("fn");
+    reserved.insert("for");
+    reserved.insert("if");
     reserved.insert("impl");
+    reserved.insert("in");
     reserved.insert("loop");
+    reserved.insert("match");
+    reserved.insert("mod");
+    reserved.insert("move");
     reserved.insert("mut");
-    reserved.insert("optional");
+    reserved.insert("pub");
+    reserved.insert("optional"); // keep `get_optional` similar to `get`
     reserved.insert("owned");
     reserved.insert("ref");
-    reserved.insert("some");
+    reserved.insert("return");
+    reserved.insert("self");
+    reserved.insert("some"); // keep `get_some` similar to `get`
+    reserved.insert("static");
+    reserved.insert("struct");
+    reserved.insert("super");
+    reserved.insert("trait");
+    reserved.insert("true");
     reserved.insert("type");
+    reserved.insert("union");
+    reserved.insert("unsafe");
+    reserved.insert("use");
+    reserved.insert("where");
+    reserved.insert("while");
     reserved
 });
 
