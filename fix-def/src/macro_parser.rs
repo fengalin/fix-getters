@@ -56,8 +56,13 @@ impl<'scope> GetterDefsCollector<'scope> {
                             _ => (),
                         },
                         State::MaybeGetterRet(getter) => {
-                            if let '>' | '&' = char_ {
-                                self.state = State::MaybeGetterRet(getter);
+                            match char_ {
+                                '>' | '&' => self.state = State::MaybeGetterRet(getter),
+                                '$' => {
+                                    // Return type is a macro argument
+                                    self.getter_defs.push(getter);
+                                }
+                                _ => (),
                             }
                         }
                         State::MaybeGetter(getter) => {
