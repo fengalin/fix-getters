@@ -49,6 +49,7 @@ pub static RESERVED: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     reserved.insert("trait");
     reserved.insert("true");
     reserved.insert("type");
+    reserved.insert("unchecked_mut"); // don't change call-sites: used in various Rust types
     reserved.insert("union");
     reserved.insert("unsafe");
     reserved.insert("use");
