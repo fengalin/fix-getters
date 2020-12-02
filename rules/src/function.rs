@@ -254,6 +254,14 @@ impl NewName {
         }
     }
 
+    /// Consumes the [`NewName`] and returns the inner new name [`String`].
+    pub fn into_string(self) -> String {
+        use NewName::*;
+        match self {
+            Fixed(new_name) | Substituted(new_name) | Regular(new_name) => new_name,
+        }
+    }
+
     /// Returns whether renaming required fixing the name to comply with rules.
     ///
     /// Ex. `get_active` -> `is_active`.
@@ -273,14 +281,6 @@ impl NewName {
     /// Ex. `get_name` -> `name`.
     pub fn is_regular(&self) -> bool {
         matches!(self, NewName::Regular(_))
-    }
-
-    /// Returns the inner the new name as [`String`].
-    pub fn into_inner(self) -> String {
-        use NewName::*;
-        match self {
-            Fixed(new_name) | Substituted(new_name) | Regular(new_name) => new_name,
-        }
     }
 }
 
