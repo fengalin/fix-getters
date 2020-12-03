@@ -3,35 +3,39 @@
 use rules::ReturnsBool;
 use std::{
     cell::{Ref, RefCell},
-    collections::HashMap,
     rc::Rc,
 };
 use syn::visit::{self, Visit};
-use utils::{getter, Getter, NonGetterReason, Scope};
+use utils::{getter, parser::prelude::*, DocCodeParser, NonGetterReason, Scope};
 
-use crate::macro_parser;
+use crate::{GetterCallCollection, TSGetterCallParser};
 
-/// Syn Visitor in search of renamable getter calls.
-#[derive(Default)]
-pub(crate) struct GetterCallsVisitor {
+/// Syn Visitor in search of renamable [`Getter`](utils::Getter) calls.
+#[derive(Debug)]
+pub struct GetterCallVisitor {
     scope_stack: Vec<Rc<RefCell<Scope>>>,
-    pub(crate) getter_calls: HashMap<usize, Vec<Getter>>,
+    getter_collection: GetterCallCollection,
+    doc_code_parser: DocCodeParser<TSGetterCallParser>,
 }
 
-impl GetterCallsVisitor {
-    fn add(&mut self, getter_call: Getter) {
-        let getter_calls_same_line = self
-            .getter_calls
-            .entry(getter_call.line - 1) // convert line nb to line idx
-            .or_insert_with(Vec::new);
+impl GetterVisitor for GetterCallVisitor {
+    type GetterCollection = GetterCallCollection;
 
-        getter_calls_same_line.push(getter_call);
+    fn visit(syntax_tree: &syn::File, getter_collection: &GetterCallCollection) {
+        let mut visitor = GetterCallVisitor {
+            doc_code_parser: DocCodeParser::<TSGetterCallParser>::new(&getter_collection),
+            getter_collection: GetterCallCollection::clone(getter_collection),
+            scope_stack: Vec::new(),
+        };
+        visitor.visit_file(syntax_tree);
     }
+}
 
+impl GetterCallVisitor {
     fn process(&mut self, method_call: &syn::ExprMethodCall) {
         use NonGetterReason::*;
 
-        let res = Getter::try_new(
+        let res = self.getter_collection.try_new_getter(
             method_call.method.to_string(),
             ReturnsBool::Maybe,
             method_call.method.span().start().line,
@@ -55,19 +59,28 @@ impl GetterCallsVisitor {
         }
 
         getter.log(&self.scope());
-        self.add(getter);
+        self.getter_collection.add(getter);
     }
 
     fn scope(&self) -> Ref<Scope> {
         self.scope_stack.last().expect("empty scope stack").borrow()
     }
+
+    fn push_scope(&mut self, scope: impl Into<Scope>) {
+        let scope = scope.into().into();
+        self.scope_stack.push(scope);
+    }
+
+    fn pop_scope(&mut self) {
+        self.scope_stack.pop();
+    }
 }
 
-impl<'ast> Visit<'ast> for GetterCallsVisitor {
+impl<'ast> Visit<'ast> for GetterCallVisitor {
     fn visit_item(&mut self, node: &'ast syn::Item) {
-        self.scope_stack.push(Scope::from(node).into());
+        self.push_scope(node);
         visit::visit_item(self, node);
-        self.scope_stack.pop();
+        self.pop_scope();
     }
 
     fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
@@ -76,10 +89,17 @@ impl<'ast> Visit<'ast> for GetterCallsVisitor {
     }
 
     fn visit_macro(&mut self, node: &'ast syn::Macro) {
-        let getter_calls =
-            macro_parser::GetterCallsCollector::collect(node.tokens.clone(), &self.scope());
-        for getter_call in getter_calls {
-            self.add(getter_call)
-        }
+        self.push_scope(node);
+        TSGetterCallParser::parse(
+            &node.tokens,
+            &self.scope_stack.last().expect("empty scope stack"),
+            &self.getter_collection,
+        );
+        self.pop_scope();
+    }
+
+    fn visit_attribute(&mut self, node: &'ast syn::Attribute) {
+        // Each doc line is passed as an attribute
+        self.doc_code_parser.have_attribute(node);
     }
 }

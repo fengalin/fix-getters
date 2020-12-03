@@ -1,10 +1,14 @@
 mod fix;
 use fix::fix;
 
-mod getter_visitor;
-pub(crate) use getter_visitor::GetterCallsVisitor;
+mod getter_call;
+pub use getter_call::GetterCallCollection;
 
-pub(crate) mod macro_parser;
+mod getter_visitor;
+pub use getter_visitor::GetterCallVisitor;
+
+pub mod token_stream_parser;
+pub use token_stream_parser::TSGetterCallParser;
 
 use log::{error, info};
 use std::{path::PathBuf, process};

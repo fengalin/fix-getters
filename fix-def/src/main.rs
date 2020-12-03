@@ -1,88 +1,18 @@
 mod fix;
 use fix::fix;
 
-mod getter_visitor;
-pub(crate) use getter_visitor::GetterDefsVisitor;
+mod getter_def;
+pub use getter_def::{GetterDef, GetterDefCollection};
 
-pub(crate) mod macro_parser;
+mod getter_visitor;
+pub use getter_visitor::GetterDefVisitor;
+
+pub mod token_stream_parser;
+pub use token_stream_parser::TSGetterDefParser;
 
 use log::{error, info};
-use std::{
-    fmt::{self, Display},
-    path::PathBuf,
-    process,
-};
-use utils::{fs, Getter, GetterError};
-
-use rules::{function, getter_suffix, NewName, ReturnsBool};
-
-#[derive(Debug)]
-struct GetterDef {
-    getter: Getter,
-    needs_doc_alias: bool,
-}
-
-impl GetterDef {
-    fn try_new(
-        name: String,
-        returns_bool: impl Into<ReturnsBool> + Copy,
-        line: usize,
-        needs_doc_alias: bool,
-    ) -> Result<Self, GetterError> {
-        Getter::try_new(name, returns_bool, line).map(|getter| GetterDef {
-            getter,
-            needs_doc_alias,
-        })
-    }
-
-    fn name(&self) -> &str {
-        &self.getter.name
-    }
-
-    fn new_name(&self) -> &NewName {
-        &self.getter.new_name
-    }
-
-    fn set_returns_bool(&mut self, returns_bool: impl Into<ReturnsBool>) {
-        let returns_bool = returns_bool.into();
-        if self.getter.returns_bool != returns_bool {
-            self.getter.returns_bool = returns_bool;
-
-            if returns_bool.is_true() {
-                self.getter.new_name = function::rename_bool_getter(
-                    getter_suffix(&self.getter.name).expect("prefix already checked"),
-                );
-            }
-        }
-    }
-
-    fn line(&self) -> usize {
-        self.getter.line
-    }
-
-    fn needs_doc_alias(&self) -> bool {
-        self.needs_doc_alias
-    }
-
-    fn log(&self, scope: &dyn Display) {
-        self.getter.log(scope);
-    }
-}
-
-impl Display for GetterDef {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}{}",
-            self.getter,
-            if self.needs_doc_alias {
-                " needs doc alias"
-            } else {
-                ""
-            },
-        )
-    }
-}
+use std::{path::PathBuf, process};
+use utils::fs;
 
 fn main() {
     let m = clap::App::new(clap::crate_name!())

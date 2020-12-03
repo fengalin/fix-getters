@@ -1,3 +1,26 @@
+//! In doc:
+//!
+//! ```rust
+//! struct MyType(u64);
+//! impl MyType {
+//!     pub fn get_foo(&self) -> u64 {
+//!         self.0
+//!     }
+//! }
+//! ```
+//!
+//! ```
+//! macro_rules! get_from_macro(
+//!     ($name:ident) => {
+//!         impl $name {
+//!             fn get_from_macro(&self) -> u64 {
+//!                 self.0
+//!             }
+//!         }
+//!     }
+//! );
+//! ```
+
 /// This is a test
 #[doc(alias = "get_foo")]
 pub fn foo() -> u64 {
@@ -90,7 +113,7 @@ macro_rules! get_from_macro(
                 (self.foo, self.foo == 42u64)
             }
 
-            fn get_multiple_arg(&self, other) -> bool {
+            fn get_multiple_arg(&self, other: u64) -> bool {
                 self.foo == other
             }
 
@@ -102,7 +125,7 @@ macro_rules! get_from_macro(
                 (self.foo.into(), self.foo == 42u64)
             }
 
-            fn not_get(&self) -> bool {
+            fn not_get_macro(&self) -> bool {
                 self.foo == 42u64
             }
         }
@@ -144,9 +167,9 @@ impl<'a> MyTrait for &'a [MyType] {
     }
 }
 
-trait Test: Sized {}
+trait Test: std::fmt::Debug {}
 
-impl<'a> MyTrait for &'a [&'a (dyn Test + Debug)] {
+impl<'a> MyTrait for &'a [&'a (dyn Test + Send)] {
     fn get_trait_no_impl(&self) -> u64 {
         42u64
     }

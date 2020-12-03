@@ -1,33 +1,41 @@
 //! Macro parser in search of renamable getter definitions.
 
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
+use std::{cell::RefCell, rc::Rc};
 use syn::buffer::{Cursor, TokenBuffer};
 
 use rules::ReturnsBool;
-use utils::{getter, NonGetterReason, Scope};
+use utils::{getter, parser::prelude::*, NonGetterReason, Scope};
 
-use crate::GetterDef;
+use crate::{GetterDef, GetterDefCollection};
 
 #[derive(Debug)]
-pub(crate) struct GetterDefsCollector<'scope> {
+pub struct TSGetterDefParser {
     state: State,
-    pub(crate) getter_defs: Vec<GetterDef>,
-    scope: &'scope Scope,
+    getter_collection: GetterDefCollection,
+    scope: Rc<RefCell<Scope>>,
 }
 
-impl<'scope> GetterDefsCollector<'scope> {
-    pub(crate) fn collect(stream: TokenStream, scope: &Scope) -> Vec<GetterDef> {
-        let mut this = GetterDefsCollector {
-            state: State::default(),
-            getter_defs: Vec::new(),
-            scope,
-        };
-        let token_buf = TokenBuffer::new2(stream);
-        this.parse(token_buf.begin());
-        this.getter_defs
-    }
+impl TokenStreamParser for TSGetterDefParser {
+    type GetterCollection = GetterDefCollection;
 
-    fn parse(&mut self, mut rest: Cursor) {
+    fn parse(
+        stream: &TokenStream,
+        scope: &Rc<RefCell<Scope>>,
+        getter_collection: &GetterDefCollection,
+    ) {
+        let mut parser = TSGetterDefParser {
+            state: State::default(),
+            getter_collection: GetterDefCollection::clone(getter_collection),
+            scope: Rc::clone(&scope),
+        };
+        let token_buf = TokenBuffer::new2(stream.clone());
+        parser.parse_(token_buf.begin());
+    }
+}
+
+impl TSGetterDefParser {
+    fn parse_(&mut self, mut rest: Cursor) {
         use NonGetterReason::*;
 
         while let Some((tt, next)) = rest.token_tree() {
@@ -40,14 +48,19 @@ impl<'scope> GetterDefsCollector<'scope> {
                             if char_ == '&' {
                                 self.state = State::MaybeGetterRef(getter);
                             } else {
-                                getter::skip(self.scope, getter.name(), &NotAMethod, getter.line());
+                                getter::skip(
+                                    &self.scope.borrow(),
+                                    getter.name(),
+                                    &NotAMethod,
+                                    getter.line(),
+                                );
                             }
                         }
                         State::MaybeGetterSelf(getter) => match char_ {
                             '-' => self.state = State::MaybeGetterRet(getter),
                             ',' => {
                                 getter::skip(
-                                    self.scope,
+                                    &self.scope.borrow(),
                                     getter.name(),
                                     &MultipleArgs,
                                     getter.line(),
@@ -60,7 +73,7 @@ impl<'scope> GetterDefsCollector<'scope> {
                                 '>' | '&' => self.state = State::MaybeGetterRet(getter),
                                 '$' => {
                                     // Return type is a macro argument
-                                    self.getter_defs.push(getter);
+                                    self.getter_collection.add(getter);
                                 }
                                 _ => (),
                             }
@@ -68,7 +81,7 @@ impl<'scope> GetterDefsCollector<'scope> {
                         State::MaybeGetter(getter) => {
                             if char_ == '<' {
                                 getter::skip(
-                                    self.scope,
+                                    &self.scope.borrow(),
                                     getter.name(),
                                     &GenericTypeParam,
                                     getter.line(),
@@ -85,7 +98,7 @@ impl<'scope> GetterDefsCollector<'scope> {
                         }
                     }
                     State::Fn => {
-                        let res = GetterDef::try_new(
+                        let res = self.getter_collection.try_new_getter(
                             ident.to_string(),
                             ReturnsBool::Maybe,
                             ident.span().start().line,
@@ -98,7 +111,7 @@ impl<'scope> GetterDefsCollector<'scope> {
                                 // Will log when the getter is confirmed
                                 self.state = State::MaybeGetter(getter)
                             }
-                            Err(err) => err.log(self.scope),
+                            Err(err) => err.log(&self.scope.borrow()),
                         }
                     }
                     State::MaybeGetterRef(getter) => {
@@ -107,19 +120,35 @@ impl<'scope> GetterDefsCollector<'scope> {
                         } else if ident == "mut" {
                             self.state = State::MaybeGetterRef(getter);
                         } else {
-                            getter::skip(self.scope, getter.name(), &NotAMethod, getter.line());
+                            getter::skip(
+                                &self.scope.borrow(),
+                                getter.name(),
+                                &NotAMethod,
+                                getter.line(),
+                            );
                         }
                     }
                     State::MaybeGetterRet(mut getter) => {
                         getter.set_returns_bool(ident == "bool");
-                        self.getter_defs.push(getter);
+                        getter.log(&self.scope.borrow());
+                        self.getter_collection.add(getter);
                     }
                     State::MaybeGetterSelf(getter) => {
-                        getter::skip(self.scope, getter.name(), &NonSelfUniqueArg, getter.line());
+                        getter::skip(
+                            &self.scope.borrow(),
+                            getter.name(),
+                            &NonSelfUniqueArg,
+                            getter.line(),
+                        );
                     }
                     State::MaybeGetterArgList(getter) => {
                         if ident != "self" {
-                            getter::skip(self.scope, getter.name(), &NotAMethod, getter.line());
+                            getter::skip(
+                                &self.scope.borrow(),
+                                getter.name(),
+                                &NotAMethod,
+                                getter.line(),
+                            );
                         }
                         // else is unlikely: a getter consuming self
                     }
@@ -130,14 +159,19 @@ impl<'scope> GetterDefsCollector<'scope> {
                         State::MaybeGetterRet(mut getter) => {
                             // Returning complexe type
                             getter.set_returns_bool(false);
-                            self.getter_defs.push(getter);
+                            self.getter_collection.add(getter);
                         }
                         State::MaybeGetter(getter) => {
                             if group.delimiter() == Delimiter::Parenthesis {
                                 if !group.stream().is_empty() {
                                     self.state = State::MaybeGetterArgList(getter);
                                 } else {
-                                    getter::skip(self.scope, getter.name(), &NoArgs, getter.line());
+                                    getter::skip(
+                                        &self.scope.borrow(),
+                                        getter.name(),
+                                        &NoArgs,
+                                        getter.line(),
+                                    );
                                 }
                             }
                         }
@@ -146,7 +180,7 @@ impl<'scope> GetterDefsCollector<'scope> {
 
                     if !group.stream().is_empty() {
                         let token_buf = TokenBuffer::new2(group.stream());
-                        self.parse(token_buf.begin());
+                        self.parse_(token_buf.begin());
                     }
                 }
                 TokenTree::Literal(_) => self.state = State::None,

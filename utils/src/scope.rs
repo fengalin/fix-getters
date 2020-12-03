@@ -5,6 +5,7 @@ use std::{cell::RefCell, fmt, rc::Rc, string::ToString};
 /// Rust code scope identification.
 #[derive(Debug)]
 pub enum Scope {
+    Attribute(String),
     Const(String),
     Fn(String),
     Macro(String),
@@ -55,6 +56,18 @@ impl From<&syn::Item> for Scope {
     }
 }
 
+impl From<&syn::Attribute> for Scope {
+    fn from(node: &syn::Attribute) -> Self {
+        Scope::Attribute(path_ident(&node.path))
+    }
+}
+
+impl From<&syn::Macro> for Scope {
+    fn from(node: &syn::Macro) -> Self {
+        Scope::Macro(path_ident(&node.path))
+    }
+}
+
 impl From<Scope> for Rc<RefCell<Scope>> {
     fn from(scope: Scope) -> Self {
         Rc::new(RefCell::new(scope))
@@ -66,6 +79,7 @@ impl fmt::Display for Scope {
         use Scope::*;
 
         match self {
+            Attribute(name) => write!(f, "attr {}", name),
             Const(name) => write!(f, "const {}", name),
             Fn(name) => write!(f, "fn {}", name),
             Macro(name) => write!(f, "macro! {}", name),

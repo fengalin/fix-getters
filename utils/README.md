@@ -15,15 +15,10 @@ The `utils` functions provide features such as:
 
 ## Features
 
-All the features are enabled by default. Use `default-features = false` and add
-specific features if your use case differs.
+The optional feature is enabled by default. Use `default-features = false` if
+your use case differs.
 
-- **`fs`** — File system traversal helper.
 - **`log`** — Logging via the `log` crate.
-- **`parser`** — Rust code parser related utilities.
-  This features enables both **`parser-error`** & **`scope`**.
-- **`parser-error`** — Rust code parser error wrapper.
-- **`scope`** — Rust code `Scope` identification.
 
 ## LICENSE
 

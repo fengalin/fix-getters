@@ -2,41 +2,46 @@
 
 use std::{
     cell::{Ref, RefCell},
-    collections::HashMap,
     rc::Rc,
 };
 use syn::visit::{self, Visit};
-use utils::{getter, NonGetterReason, Scope};
+use utils::{getter, parser::prelude::*, DocCodeParser, NonGetterReason, Scope};
 
-use crate::{macro_parser, GetterDef};
+use crate::{GetterDefCollection, TSGetterDefParser};
 
-/// Syn Visitor in search of renamable getter definitions.
-#[derive(Default)]
-pub(crate) struct GetterDefsVisitor {
+/// Syn Visitor in search of renamable [`Getter`](utils::Getter) definitions.
+#[derive(Debug)]
+pub struct GetterDefVisitor {
+    getter_collection: GetterDefCollection,
     scope_stack: Vec<Rc<RefCell<Scope>>>,
-    pub(crate) getter_defs: HashMap<usize, GetterDef>,
+    doc_code_parser: DocCodeParser<TSGetterDefParser>,
 }
 
-impl GetterDefsVisitor {
-    fn add(&mut self, getter_def: GetterDef) {
-        // convert line nb to line idx
-        let line_idx = getter_def.line() - 1;
-        if self.getter_defs.insert(line_idx, getter_def).is_some() {
-            panic!("Found more than one getter definition @ {}", line_idx + 1);
-        }
-    }
+impl GetterVisitor for GetterDefVisitor {
+    type GetterCollection = GetterDefCollection;
 
+    fn visit(syntax_tree: &syn::File, getter_collection: &GetterDefCollection) {
+        let mut visitor = GetterDefVisitor {
+            doc_code_parser: DocCodeParser::<TSGetterDefParser>::new(&getter_collection),
+            getter_collection: GetterDefCollection::clone(getter_collection),
+            scope_stack: Vec::new(),
+        };
+        visitor.visit_file(syntax_tree);
+    }
+}
+
+impl GetterDefVisitor {
     fn process(&mut self, sig: &syn::Signature) {
         use NonGetterReason::*;
         use Scope::*;
 
         let needs_doc_alias = match *self.scope() {
             StructImpl(_) | Trait(_) | Macro(_) => true,
-            TraitImpl { .. } => false,
+            TraitImpl { .. } | Attribute(_) => false,
             _ => return,
         };
 
-        let res = GetterDef::try_new(
+        let res = self.getter_collection.try_new_getter(
             sig.ident.to_string(),
             Self::returns_bool(sig),
             sig.ident.span().start().line,
@@ -83,7 +88,7 @@ impl GetterDefsVisitor {
         }
 
         getter.log(&self.scope());
-        self.add(getter);
+        self.getter_collection.add(getter);
     }
 
     fn returns_bool(sig: &syn::Signature) -> bool {
@@ -106,13 +111,22 @@ impl GetterDefsVisitor {
     fn scope(&self) -> Ref<Scope> {
         self.scope_stack.last().expect("empty scope stack").borrow()
     }
+
+    fn push_scope(&mut self, scope: impl Into<Scope>) {
+        let scope = scope.into().into();
+        self.scope_stack.push(scope);
+    }
+
+    fn pop_scope(&mut self) {
+        self.scope_stack.pop();
+    }
 }
 
-impl<'ast> Visit<'ast> for GetterDefsVisitor {
+impl<'ast> Visit<'ast> for GetterDefVisitor {
     fn visit_item(&mut self, node: &'ast syn::Item) {
-        self.scope_stack.push(Scope::from(node).into());
+        self.push_scope(node);
         visit::visit_item(self, node);
-        self.scope_stack.pop();
+        self.pop_scope();
     }
 
     fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
@@ -131,10 +145,17 @@ impl<'ast> Visit<'ast> for GetterDefsVisitor {
     }
 
     fn visit_macro(&mut self, node: &'ast syn::Macro) {
-        let getter_defs =
-            macro_parser::GetterDefsCollector::collect(node.tokens.clone(), &self.scope());
-        for getter_def in getter_defs {
-            self.add(getter_def)
-        }
+        self.push_scope(node);
+        TSGetterDefParser::parse(
+            &node.tokens,
+            &self.scope_stack.last().expect("empty scope stack"),
+            &self.getter_collection,
+        );
+        self.pop_scope();
+    }
+
+    fn visit_attribute(&mut self, node: &'ast syn::Attribute) {
+        // Each doc line is passed as an attribute
+        self.doc_code_parser.have_attribute(node);
     }
 }

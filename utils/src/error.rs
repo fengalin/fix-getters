@@ -13,7 +13,6 @@ pub enum Error {
     ReadEntry(io::Error),
     ReadFile(io::Error),
     WriteFile(io::Error),
-    #[cfg(feature = "parser-error")]
     ParseFile(ParseFileError),
 }
 
@@ -28,7 +27,6 @@ impl Display for Error {
             ReadEntry(err) => write!(f, "unable to read dir entry: {}", err),
             ReadFile(err) => write!(f, "unable to read file: {}", err),
             WriteFile(err) => write!(f, "unable to write file: {}", err),
-            #[cfg(feature = "parser-error")]
             ParseFile(err) => err.fmt(f),
         }
     }
@@ -42,43 +40,38 @@ impl From<rules::dir_entry::CheckError> for Error {
     }
 }
 
-cfg_if::cfg_if! {
-    if #[cfg(feature = "parser-error")]
-    {
-        /// Rust code parser error wrapper.
-        #[derive(Debug)]
-        pub struct ParseFileError {
-            error: syn::Error,
-            filepath: std::path::PathBuf,
-            source_code: String,
-        }
+/// Rust code parser error wrapper.
+#[derive(Debug)]
+pub struct ParseFileError {
+    error: syn::Error,
+    filepath: std::path::PathBuf,
+    source_code: String,
+}
 
-        impl ParseFileError {
-            pub fn new(error: syn::Error, filepath: std::path::PathBuf, source_code: String) -> Self {
-                ParseFileError {
-                    error,
-                    filepath,
-                    source_code,
-                }
-            }
+impl ParseFileError {
+    pub fn new(error: syn::Error, filepath: std::path::PathBuf, source_code: String) -> Self {
+        ParseFileError {
+            error,
+            filepath,
+            source_code,
         }
+    }
+}
 
-        impl Display for ParseFileError {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(
-                    f,
-                    "failed to parse file {:?}: {:?}\n\t{}",
-                    self.filepath, self.error, self.source_code
-                )
-           }
-        }
+impl Display for ParseFileError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "failed to parse file {:?}: {:?}\n\t{}",
+            self.filepath, self.error, self.source_code
+        )
+    }
+}
 
-        impl std::error::Error for ParseFileError {}
+impl std::error::Error for ParseFileError {}
 
-        impl From<ParseFileError> for super::Error {
-            fn from(err: ParseFileError) -> Self {
-                Error::ParseFile(err)
-            }
-        }
+impl From<ParseFileError> for super::Error {
+    fn from(err: ParseFileError) -> Self {
+        Error::ParseFile(err)
     }
 }

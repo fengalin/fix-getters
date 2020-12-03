@@ -4,11 +4,10 @@ use std::borrow::Cow;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use syn::visit::Visit;
 
-use utils::{Error, ParseFileError};
+use utils::{parser::prelude::*, Error, ParseFileError};
 
-use crate::GetterCallsVisitor;
+use crate::{GetterCallCollection, GetterCallVisitor};
 
 /// Fixes the file at the given path.
 ///
@@ -24,15 +23,15 @@ pub(crate) fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Erro
         }
     };
 
-    let mut visitor = GetterCallsVisitor::default();
-    visitor.visit_file(&syntax_tree);
+    let getter_collection = GetterCallCollection::default();
+    GetterCallVisitor::visit(&syntax_tree, &getter_collection);
 
     let output_path = match output_path {
         Some(output_path) => output_path,
         None => path,
     };
 
-    if visitor.getter_calls.is_empty() {
+    if getter_collection.is_empty() {
         // Nothing to do for this file
         return Ok(());
     }
@@ -42,7 +41,7 @@ pub(crate) fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Erro
     let mut writer = std::io::BufWriter::new(f);
 
     for (line_idx, line) in source_code.lines().enumerate() {
-        if let Some(getter_calls) = visitor.getter_calls.get(&line_idx) {
+        if let Some(getter_calls) = getter_collection.get(line_idx) {
             let mut line = Cow::from(line);
             for getter_call in getter_calls {
                 let origin = format!(".{}(", getter_call.name);

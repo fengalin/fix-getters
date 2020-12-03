@@ -94,6 +94,7 @@ dependencies = [
  "fix-getters-utils",
  "log",
  "proc-macro2",
+ "smallvec",
  "stderrlog",
  "syn",
 ]
@@ -112,6 +113,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "fix-getters-rules",
  "log",
+ "proc-macro2",
  "syn",
 ]
 
@@ -178,6 +180,12 @@ checksum = "1e0704ee1a7e00d7bb417d0770ea303c1bccbabf0ef1667dae92b5967f5f8a71"
 dependencies = [
  "unicode-xid",
 ]
+
+[[package]]
+name = "smallvec"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7acad6f34eb9e8a259d3283d1e8c1d34d7415943d4895f65cc73813c7396fc85"
 
 [[package]]
 name = "stderrlog"

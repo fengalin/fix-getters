@@ -2,25 +2,34 @@
 //!
 //! # Features
 //!
-//! - **`fs`** *(enabled by default)* — File system traversal helper.
 //! - **`log`** *(enabled by default)* — Logging via the `log` crate.
-//! - **`parser`** *(enabled by default)* — Rust code parser related utilities.
-//!   This features enables both **`parser-error`** & **`scope`**.
-//! - **`parser-error`** *(enabled by default)* — Rust code parser error wrapper.
-//! - **`scope`** *(enabled by default)* — Rust code `Scope` identification.
+
+pub mod doc_code_parser;
+pub use doc_code_parser::DocCodeParser;
 
 pub mod error;
 pub use error::Error;
-#[cfg(feature = "parser-error")]
 pub use error::ParseFileError;
 
-#[cfg(feature = "fs")]
 pub mod fs;
 
 pub mod getter;
 pub use getter::{Getter, GetterError, NonGetterReason};
 
-#[cfg(feature = "scope")]
+pub mod getter_collection;
+pub use getter_collection::GetterCollection;
+
+pub mod getter_visitor;
+pub use getter_visitor::GetterVisitor;
+
 pub mod scope;
-#[cfg(feature = "scope")]
 pub use scope::Scope;
+
+pub mod token_stream_parser;
+pub use token_stream_parser::TokenStreamParser;
+
+pub mod parser {
+    pub mod prelude {
+        pub use super::super::{GetterCollection, GetterVisitor, TokenStreamParser};
+    }
+}

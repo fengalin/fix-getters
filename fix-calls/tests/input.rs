@@ -1,4 +1,28 @@
-/// This is a test
+//! This is a test
+//!
+//! ```rust
+//! let b = String::from("abc");
+//! assert_eq!(hello.get_str(), Some("Hello!"));
+//! ```
+
+/// ```
+/// fn from_my_type() -> u64 {
+///     let my_instance = MyType { foo: 42u64 };
+///     let _ = my_instance.get_multiple_arg(42u64);
+///     let other = my_instance.get_foo();
+/// }
+/// ```
+///
+/// ```
+/// macro_rules! get_via_macro (
+///     ($self: expr) => ({
+///         let _ = $self.get_result();
+///         let _ = $self.get_multiple_arg(42u64);
+///         let ret = $self.get_foo();
+///         ret
+///     })
+/// );
+/// ```
 
 const MY_CONST_INSTANCE: MyType = MyType { foo: 42u64 };
 
