@@ -167,11 +167,11 @@ pub fn getter_suffix(name: &str) -> Option<&str> {
 #[inline]
 pub fn rename_bool_getter(suffix: &str) -> NewName {
     if BOOL_AS_REGULAR.contains(suffix) {
-        NewName::Regular(suffix.to_string())
+        NewName::Fixed(suffix.to_string())
     } else if let Some(new_name) = try_substitute(suffix) {
         NewName::Substituted(new_name)
     } else {
-        NewName::Fixed(format!("is_{}", suffix))
+        NewName::RegularBool(format!("is_{}", suffix))
     }
 }
 
@@ -203,7 +203,7 @@ pub fn guesstimate_boolness_then_rename(suffix: &str) -> Option<NewName> {
 
     let splits: Vec<&str> = suffix.splitn(2, '_').collect();
     if splits[0].ends_with(BOOL_ABLE_PREFIX) {
-        Some(NewName::Fixed(format!("is_{}", suffix)))
+        Some(NewName::RegularBool(format!("is_{}", suffix)))
     } else {
         None
     }
@@ -242,8 +242,10 @@ pub enum NewName {
     Fixed(String),
     /// Applied substitution. Ex. `get_mute` -> `is_muted`.
     Substituted(String),
-    /// Regaular removal of the prefix.
+    /// Regular removal of the prefix.
     Regular(String),
+    /// Replace `get_` with `is_`.
+    RegularBool(String),
 }
 
 impl NewName {
@@ -251,7 +253,9 @@ impl NewName {
     pub fn as_str(&self) -> &str {
         use NewName::*;
         match self {
-            Fixed(new_name) | Substituted(new_name) | Regular(new_name) => new_name.as_str(),
+            Fixed(new_name) | Substituted(new_name) | Regular(new_name) | RegularBool(new_name) => {
+                new_name.as_str()
+            }
         }
     }
 
@@ -259,7 +263,9 @@ impl NewName {
     pub fn into_string(self) -> String {
         use NewName::*;
         match self {
-            Fixed(new_name) | Substituted(new_name) | Regular(new_name) => new_name,
+            Fixed(new_name) | Substituted(new_name) | Regular(new_name) | RegularBool(new_name) => {
+                new_name
+            }
         }
     }
 
@@ -277,11 +283,20 @@ impl NewName {
         matches!(self, NewName::Substituted(_))
     }
 
-    /// Returns whether renaming used the regular prefix removal strategy.
+    /// Returns whether renaming used the regular strategy.
     ///
-    /// Ex. `get_name` -> `name`.
+    /// Ex.:
+    // * `get_name` -> `name`.
+    // * `get_active` -> `is_active`.
     pub fn is_regular(&self) -> bool {
-        matches!(self, NewName::Regular(_))
+        matches!(self, NewName::Regular(_) | NewName::RegularBool(_))
+    }
+
+    /// Returns whether renaming used the regular strategy for booleans.
+    ///
+    /// Ex. `get_active` -> `is_active`.
+    pub fn is_regular_bool(&self) -> bool {
+        matches!(self, NewName::RegularBool(_))
     }
 }
 
@@ -292,6 +307,7 @@ impl Display for NewName {
             Fixed(new_name) => write!(f, "fixed as {}", new_name),
             Substituted(new_name) => write!(f, "substituted with {}", new_name),
             Regular(new_name) => write!(f, "renamed as {}", new_name),
+            RegularBool(new_name) => write!(f, "renamed as {}", new_name),
         }
     }
 }
@@ -348,9 +364,10 @@ mod tests {
 
     #[test]
     fn bool_getter_suffix() {
-        let new_name = rename_bool_getter(&"result");
+        let new_name = rename_bool_getter(&"activable");
         assert!(new_name.is_regular());
-        assert_eq!(new_name, "result");
+        assert!(new_name.is_regular_bool());
+        assert_eq!(new_name, "is_activable");
 
         let new_name = rename_bool_getter(&"mute");
         assert!(new_name.is_substituted());
@@ -360,9 +377,9 @@ mod tests {
         assert!(new_name.is_substituted());
         assert_eq!(new_name, "emits_eos");
 
-        let new_name = rename_bool_getter(&"activable");
+        let new_name = rename_bool_getter(&"result");
         assert!(new_name.is_fixed());
-        assert_eq!(new_name, "is_activable");
+        assert_eq!(new_name, "result");
     }
 
     #[test]
@@ -403,7 +420,7 @@ mod tests {
     #[test]
     fn rename_getter_bool() {
         let new_name = try_rename_would_be_getter(&"get_structure", true).unwrap();
-        assert!(new_name.is_fixed());
+        assert!(new_name.is_regular_bool());
         assert_eq!(new_name, "is_structure");
 
         let new_name = try_rename_would_be_getter(&"get_mute", true).unwrap();
@@ -415,7 +432,7 @@ mod tests {
         assert_eq!(new_name, "emits_eos");
 
         let new_name = try_rename_would_be_getter(&"get_activable", true).unwrap();
-        assert!(new_name.is_fixed());
+        assert!(new_name.is_regular_bool());
         assert_eq!(new_name, "is_activable");
 
         assert!(try_rename_would_be_getter(&"get_mut", true)
@@ -441,7 +458,7 @@ mod tests {
         assert_eq!(new_name, "emits_eos");
 
         let new_name = try_rename_would_be_getter(&"get_activable", ReturnsBool::Maybe).unwrap();
-        assert!(new_name.is_fixed());
+        assert!(new_name.is_regular_bool());
         assert_eq!(new_name, "is_activable");
 
         assert!(try_rename_would_be_getter(&"get_mut", ReturnsBool::Maybe)
