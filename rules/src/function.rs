@@ -67,24 +67,61 @@ pub static RESERVED: Lazy<HashSet<&'static str>> = Lazy::new(|| {
 /// - `get_emit_eos` -> `emits_eos`.
 pub static BOOL_SUBSTITUTES: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     let mut bool_substitutes = HashMap::new();
+    bool_substitutes.insert("activate", "activates");
+    bool_substitutes.insert("accept", "accepts");
+    bool_substitutes.insert("close", "closes");
+    bool_substitutes.insert("create", "creates");
+    bool_substitutes.insert("destroy", "destroys");
     bool_substitutes.insert("do", "does");
+    bool_substitutes.insert("draw", "draws");
+    bool_substitutes.insert("embed", "embeds");
     bool_substitutes.insert("emit", "emits");
+    bool_substitutes.insert("enable", "enables");
+    bool_substitutes.insert("exit", "exits");
+    bool_substitutes.insert("expand", "expands");
     bool_substitutes.insert("fill", "fills");
+    bool_substitutes.insert("fit", "fits");
+    bool_substitutes.insert("focus", "focuses");
+    bool_substitutes.insert("hide", "hides");
+    bool_substitutes.insert("ignore", "ignores");
     bool_substitutes.insert("mute", "is_muted");
+    bool_substitutes.insert("overwrite", "overwrites");
+    bool_substitutes.insert("propagate", "propagates");
     bool_substitutes.insert("reset", "resets");
+    bool_substitutes.insert("require", "requires");
+    bool_substitutes.insert("resize", "resizes");
+    bool_substitutes.insert("restrict", "restricts");
+    bool_substitutes.insert("reveal", "reveals");
+    bool_substitutes.insert("select", "selects");
     bool_substitutes.insert("show", "shows");
+    bool_substitutes.insert("skip", "skips");
+    bool_substitutes.insert("snap", "snaps");
+    bool_substitutes.insert("support", "supports");
+    bool_substitutes.insert("take", "takes");
+    bool_substitutes.insert("use", "uses");
+    bool_substitutes.insert("wrap", "wraps");
     bool_substitutes
 });
 
-/// Set of getters returning a `bool` which should be handle as regular getters.
+/// Set of getters returning a `bool` for which the prefix should be removed.
 ///
 /// The convention is to rename `bool` getters `get_suffix` as `is_suffix`,
 /// but there are cases for which we want to apply the regular getter rule:
 ///
 /// - `get_result` -> `result`.
+/// - `get_has_entry` -> `has_entry`.
 pub static BOOL_AS_REGULAR: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     let mut bool_as_regular = HashSet::new();
+    bool_as_regular.insert("can");
+    bool_as_regular.insert("has");
+    bool_as_regular.insert("must");
     bool_as_regular.insert("result");
+    bool_as_regular.insert("should");
+    bool_as_regular.insert("state");
+    // Also add all the substitutes (e.g. accepts, skips, ...)
+    for bool_substitute in BOOL_SUBSTITUTES.values() {
+        bool_as_regular.insert(bool_substitute);
+    }
     bool_as_regular
 });
 
