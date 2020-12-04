@@ -78,13 +78,10 @@ fn main() {
 
     // Traverse the given crate tree following the rules defined in crate `rules`
     // and apply `fix` on elligible files.
-    info!(
-        "Processing {}",
-        path.to_str().expect("was a &str initially"),
-    );
+    info!("Processing {:?}", path);
     if let Err(error) = fs::traverse(&path, &output_path, &fix) {
         let _ = error!("{}", error);
         process::exit(1);
     }
-    info!("Done {}", path.to_str().expect("was a &str initially"));
+    info!("Done {:?}", path);
 }

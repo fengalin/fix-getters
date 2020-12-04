@@ -6,6 +6,7 @@ use log::{debug, trace, warn};
 use std::{
     error::Error,
     fmt::{self, Display},
+    path::Path,
 };
 
 use rules::{self, NewName, RenameError, ReturnsBool};
@@ -69,11 +70,11 @@ impl Getter {
 
     /// Logs details about the getter at the appropriate log level.
     #[cfg(feature = "log")]
-    pub fn log(&self, scope: &dyn Display) {
+    pub fn log(&self, path: &Path, scope: &dyn Display) {
         if self.new_name.is_fixed() {
             debug!("* {} {}", scope, self);
         } else if self.new_name.is_substituted() {
-            warn!("* {} {}", scope, self);
+            warn!("{:?} {} {}", path, scope, self);
         } else {
             trace!("* {} {}", scope, self);
         }

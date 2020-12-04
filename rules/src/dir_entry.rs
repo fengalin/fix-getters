@@ -7,6 +7,7 @@ use std::{
     fmt::{self, Display},
     fs::DirEntry,
     io,
+    path::PathBuf,
 };
 
 /// Directories to exclude from the fix process.
@@ -26,17 +27,19 @@ pub static EXCLUDED: Lazy<HashSet<&'static str>> = Lazy::new(|| {
 /// Checks the given directory entry.
 #[inline]
 pub fn check(entry: &DirEntry) -> Result<CheckOk, CheckError> {
-    let entry_type = entry.file_type().map_err(CheckError::DirEntry)?;
+    let entry_type = entry
+        .file_type()
+        .map_err(|err| CheckError::DirEntry(entry.path(), err))?;
 
     let entry_name = entry.file_name();
     let entry_name = match entry_name.to_str() {
         Some(entry_name) => entry_name,
-        None => return Err(CheckError::Name(entry_name)),
+        None => return Err(CheckError::Name(entry.path(), entry_name)),
     };
 
     if entry_type.is_file() {
         if entry_name.ends_with(".rs") {
-            return Ok(CheckOk::RsFile);
+            return Ok(CheckOk::RustFile);
         }
     } else if entry_type.is_dir() {
         if !EXCLUDED.contains(entry_name) {
@@ -52,15 +55,15 @@ pub fn check(entry: &DirEntry) -> Result<CheckOk, CheckError> {
 #[derive(Debug)]
 pub enum CheckOk {
     Directory,
-    RsFile,
+    RustFile,
     Skip(String),
     SkipUnspecified,
 }
 
 #[derive(Debug)]
 pub enum CheckError {
-    Name(std::ffi::OsString),
-    DirEntry(io::Error),
+    Name(PathBuf, std::ffi::OsString),
+    DirEntry(PathBuf, io::Error),
 }
 
 impl Display for CheckError {
@@ -68,8 +71,8 @@ impl Display for CheckError {
         use CheckError::*;
 
         match self {
-            Name(name) => write!(f, "error converting dir entry name {:?}", name),
-            DirEntry(err) => write!(f, "error checking dir entry {}", err),
+            Name(path, name) => write!(f, "error converting dir entry name {:?} {:?}", path, name),
+            DirEntry(path, err) => write!(f, "error checking dir entry {:?}: {}", path, err),
         }
     }
 }

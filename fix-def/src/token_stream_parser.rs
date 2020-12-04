@@ -1,7 +1,7 @@
 //! Macro parser in search of renamable getter definitions.
 
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
-use std::{cell::RefCell, rc::Rc};
+use std::path::Path;
 use syn::buffer::{Cursor, TokenBuffer};
 
 use rules::ReturnsBool;
@@ -10,31 +10,34 @@ use utils::{getter, parser::prelude::*, NonGetterReason, Scope};
 use crate::{GetterDef, GetterDefCollection};
 
 #[derive(Debug)]
-pub struct TSGetterDefParser {
+pub struct TSGetterDefParser<'scope> {
     state: State,
     getter_collection: GetterDefCollection,
-    scope: Rc<RefCell<Scope>>,
+    path: &'scope Path,
+    scope: &'scope Scope,
 }
 
-impl TokenStreamParser for TSGetterDefParser {
+impl<'scope> TokenStreamParser for TSGetterDefParser<'scope> {
     type GetterCollection = GetterDefCollection;
 
     fn parse(
+        path: &Path,
+        scope: &Scope,
         stream: &TokenStream,
-        scope: &Rc<RefCell<Scope>>,
         getter_collection: &GetterDefCollection,
     ) {
         let mut parser = TSGetterDefParser {
             state: State::default(),
             getter_collection: GetterDefCollection::clone(getter_collection),
-            scope: Rc::clone(&scope),
+            path,
+            scope,
         };
         let token_buf = TokenBuffer::new2(stream.clone());
         parser.parse_(token_buf.begin());
     }
 }
 
-impl TSGetterDefParser {
+impl<'scope> TSGetterDefParser<'scope> {
     fn parse_(&mut self, mut rest: Cursor) {
         use NonGetterReason::*;
 
@@ -48,19 +51,14 @@ impl TSGetterDefParser {
                             if char_ == '&' {
                                 self.state = State::MaybeGetterRef(getter);
                             } else {
-                                getter::skip(
-                                    &self.scope.borrow(),
-                                    getter.name(),
-                                    &NotAMethod,
-                                    getter.line(),
-                                );
+                                getter::skip(self.scope, getter.name(), &NotAMethod, getter.line());
                             }
                         }
                         State::MaybeGetterSelf(getter) => match char_ {
                             '-' => self.state = State::MaybeGetterRet(getter),
                             ',' => {
                                 getter::skip(
-                                    &self.scope.borrow(),
+                                    self.scope,
                                     getter.name(),
                                     &MultipleArgs,
                                     getter.line(),
@@ -81,7 +79,7 @@ impl TSGetterDefParser {
                         State::MaybeGetter(getter) => {
                             if char_ == '<' {
                                 getter::skip(
-                                    &self.scope.borrow(),
+                                    self.scope,
                                     getter.name(),
                                     &GenericTypeParam,
                                     getter.line(),
@@ -111,7 +109,7 @@ impl TSGetterDefParser {
                                 // Will log when the getter is confirmed
                                 self.state = State::MaybeGetter(getter)
                             }
-                            Err(err) => err.log(&self.scope.borrow()),
+                            Err(err) => err.log(self.scope),
                         }
                     }
                     State::MaybeGetterRef(getter) => {
@@ -120,35 +118,20 @@ impl TSGetterDefParser {
                         } else if ident == "mut" {
                             self.state = State::MaybeGetterRef(getter);
                         } else {
-                            getter::skip(
-                                &self.scope.borrow(),
-                                getter.name(),
-                                &NotAMethod,
-                                getter.line(),
-                            );
+                            getter::skip(self.scope, getter.name(), &NotAMethod, getter.line());
                         }
                     }
                     State::MaybeGetterRet(mut getter) => {
                         getter.set_returns_bool(ident == "bool");
-                        getter.log(&self.scope.borrow());
+                        getter.log(self.path, self.scope);
                         self.getter_collection.add(getter);
                     }
                     State::MaybeGetterSelf(getter) => {
-                        getter::skip(
-                            &self.scope.borrow(),
-                            getter.name(),
-                            &NonSelfUniqueArg,
-                            getter.line(),
-                        );
+                        getter::skip(self.scope, getter.name(), &NonSelfUniqueArg, getter.line());
                     }
                     State::MaybeGetterArgList(getter) => {
                         if ident != "self" {
-                            getter::skip(
-                                &self.scope.borrow(),
-                                getter.name(),
-                                &NotAMethod,
-                                getter.line(),
-                            );
+                            getter::skip(self.scope, getter.name(), &NotAMethod, getter.line());
                         }
                         // else is unlikely: a getter consuming self
                     }
@@ -166,12 +149,7 @@ impl TSGetterDefParser {
                                 if !group.stream().is_empty() {
                                     self.state = State::MaybeGetterArgList(getter);
                                 } else {
-                                    getter::skip(
-                                        &self.scope.borrow(),
-                                        getter.name(),
-                                        &NoArgs,
-                                        getter.line(),
-                                    );
+                                    getter::skip(self.scope, getter.name(), &NoArgs, getter.line());
                                 }
                             }
                         }

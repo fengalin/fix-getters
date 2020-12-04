@@ -22,15 +22,15 @@ where
     // Traverse the crate / workspace tree
     if path.is_dir() {
         #[cfg(feature = "log")]
-        debug!("entering {:?}", path.as_os_str());
+        debug!("entering {:?}", path);
 
-        for entry in std::fs::read_dir(path).map_err(Error::ReadDir)? {
-            let entry = entry.map_err(Error::ReadEntry)?;
+        for entry in std::fs::read_dir(path).map_err(|err| Error::ReadDir(path.to_owned(), err))? {
+            let entry = entry.map_err(|err| Error::ReadEntry(path.to_owned(), err))?;
 
             use dir_entry::CheckOk::*;
             let is_dir = match dir_entry::check(&entry)? {
                 Directory => true,
-                RsFile => false,
+                RustFile => false,
                 Skip(_name) => {
                     #[cfg(feature = "log")]
                     debug!("skipping {:?}", _name);
@@ -44,9 +44,8 @@ where
                 Some(output_path) => {
                     let output_path = output_path.join(entry.file_name());
                     if is_dir {
-                        std::fs::create_dir(&output_path).map_err(|err| {
-                            Error::CreateDir(output_path.to_string_lossy().to_string(), err)
-                        })?;
+                        std::fs::create_dir(&output_path)
+                            .map_err(|err| Error::CreateDir(output_path.to_owned(), err))?;
                     }
                     Some(output_path)
                 }
@@ -60,6 +59,6 @@ where
     }
 
     #[cfg(feature = "log")]
-    debug!("processing {:?}", path.as_os_str());
+    debug!("processing {:?}", path);
     f(&path, &output_path)
 }

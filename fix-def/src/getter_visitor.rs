@@ -2,6 +2,7 @@
 
 use std::{
     cell::{Ref, RefCell},
+    path::Path,
     rc::Rc,
 };
 use syn::visit::{self, Visit};
@@ -11,26 +12,28 @@ use crate::{GetterDefCollection, TSGetterDefParser};
 
 /// Syn Visitor in search of renamable [`Getter`](utils::Getter) definitions.
 #[derive(Debug)]
-pub struct GetterDefVisitor {
+pub struct GetterDefVisitor<'path> {
     getter_collection: GetterDefCollection,
     scope_stack: Vec<Rc<RefCell<Scope>>>,
-    doc_code_parser: DocCodeParser<TSGetterDefParser>,
+    path: &'path Path,
+    doc_code_parser: DocCodeParser<TSGetterDefParser<'path>>,
 }
 
-impl GetterVisitor for GetterDefVisitor {
+impl<'path> GetterVisitor for GetterDefVisitor<'path> {
     type GetterCollection = GetterDefCollection;
 
-    fn visit(syntax_tree: &syn::File, getter_collection: &GetterDefCollection) {
+    fn visit(path: &Path, syntax_tree: &syn::File, getter_collection: &GetterDefCollection) {
         let mut visitor = GetterDefVisitor {
-            doc_code_parser: DocCodeParser::<TSGetterDefParser>::new(&getter_collection),
             getter_collection: GetterDefCollection::clone(getter_collection),
+            doc_code_parser: DocCodeParser::<TSGetterDefParser>::new(path, &getter_collection),
+            path,
             scope_stack: Vec::new(),
         };
         visitor.visit_file(syntax_tree);
     }
 }
 
-impl GetterDefVisitor {
+impl<'path> GetterDefVisitor<'path> {
     fn process(&mut self, sig: &syn::Signature) {
         use NonGetterReason::*;
         use Scope::*;
@@ -87,7 +90,7 @@ impl GetterDefVisitor {
             }
         }
 
-        getter.log(&self.scope());
+        getter.log(&self.path, &self.scope());
         self.getter_collection.add(getter);
     }
 
@@ -122,7 +125,7 @@ impl GetterDefVisitor {
     }
 }
 
-impl<'ast> Visit<'ast> for GetterDefVisitor {
+impl<'ast, 'path> Visit<'ast> for GetterDefVisitor<'path> {
     fn visit_item(&mut self, node: &'ast syn::Item) {
         self.push_scope(node);
         visit::visit_item(self, node);
@@ -147,8 +150,9 @@ impl<'ast> Visit<'ast> for GetterDefVisitor {
     fn visit_macro(&mut self, node: &'ast syn::Macro) {
         self.push_scope(node);
         TSGetterDefParser::parse(
+            self.path,
+            &self.scope(),
             &node.tokens,
-            &self.scope_stack.last().expect("empty scope stack"),
             &self.getter_collection,
         );
         self.pop_scope();

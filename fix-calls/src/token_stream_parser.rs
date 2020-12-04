@@ -1,7 +1,7 @@
 //! Macro parser in search of renamable getter calls.
 
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
-use std::{cell::RefCell, rc::Rc};
+use std::path::Path;
 use syn::buffer::{Cursor, TokenBuffer};
 
 use rules::ReturnsBool;
@@ -10,31 +10,34 @@ use utils::{getter, parser::prelude::*, Getter, NonGetterReason, Scope};
 use crate::GetterCallCollection;
 
 #[derive(Debug)]
-pub struct TSGetterCallParser {
+pub struct TSGetterCallParser<'scope> {
     state: State,
     getter_collection: GetterCallCollection,
-    scope: Rc<RefCell<Scope>>,
+    path: &'scope Path,
+    scope: &'scope Scope,
 }
 
-impl TokenStreamParser for TSGetterCallParser {
+impl<'scope> TokenStreamParser for TSGetterCallParser<'scope> {
     type GetterCollection = GetterCallCollection;
 
     fn parse(
+        path: &Path,
+        scope: &Scope,
         stream: &TokenStream,
-        scope: &Rc<RefCell<Scope>>,
         getter_collection: &GetterCallCollection,
     ) {
         let mut parser = TSGetterCallParser {
             state: State::default(),
             getter_collection: GetterCallCollection::clone(getter_collection),
-            scope: Rc::clone(&scope),
+            path,
+            scope,
         };
         let token_buf = TokenBuffer::new2(stream.clone());
         parser.parse_(token_buf.begin());
     }
 }
 
-impl TSGetterCallParser {
+impl<'scope> TSGetterCallParser<'scope> {
     fn parse_(&mut self, mut rest: Cursor) {
         use NonGetterReason::*;
 
@@ -48,7 +51,7 @@ impl TSGetterCallParser {
                         ':' | '<' => {
                             if let State::MaybeGetter(getter) = self.state.take() {
                                 getter::skip(
-                                    &self.scope.borrow(),
+                                    self.scope,
                                     &getter.name,
                                     &GenericTypeParam,
                                     getter.line,
@@ -70,7 +73,7 @@ impl TSGetterCallParser {
                                 // Will log when the getter is confirmed
                                 self.state = State::MaybeGetter(getter)
                             }
-                            Err(err) => err.log(&self.scope.borrow()),
+                            Err(err) => err.log(self.scope),
                         }
                     }
                 }
@@ -79,15 +82,10 @@ impl TSGetterCallParser {
                         if let Delimiter::Parenthesis = group.delimiter() {
                             if group.stream().is_empty() {
                                 // found `()` after a getter call
-                                getter.log(&self.scope.borrow());
+                                getter.log(self.path, self.scope);
                                 self.getter_collection.add(getter);
                             } else {
-                                getter::skip(
-                                    &self.scope.borrow(),
-                                    &getter.name,
-                                    &MultipleArgs,
-                                    getter.line,
-                                );
+                                getter::skip(self.scope, &getter.name, &MultipleArgs, getter.line);
                             }
                         }
                     }

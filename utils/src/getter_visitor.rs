@@ -1,6 +1,7 @@
 //! A [`Visit`](syn::visit::Visit) `trait` dedicated at [`Getter`](crate::Getter)s collection.
 
 use crate::GetterCollection;
+use std::path::Path;
 
 /// A [`Visit`](syn::visit::Visit) `trait` dedicated at [`Getter`](crate::Getter)s collection.
 pub trait GetterVisitor: for<'ast> syn::visit::Visit<'ast> {
@@ -9,5 +10,5 @@ pub trait GetterVisitor: for<'ast> syn::visit::Visit<'ast> {
 
     /// Visits the `syntax_tree` collecting [`Getter`](crate::Getter)s
     /// in the [`GetterCollection`].
-    fn visit(syntax_tree: &syn::File, getter_collection: &Self::GetterCollection);
+    fn visit(path: &Path, syntax_tree: &syn::File, getter_collection: &Self::GetterCollection);
 }

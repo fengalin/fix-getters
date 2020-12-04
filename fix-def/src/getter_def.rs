@@ -3,6 +3,7 @@ use std::{
     cell::RefCell,
     collections::HashMap,
     fmt::{self, Display},
+    path::Path,
     rc::Rc,
 };
 use utils::{parser::prelude::*, Getter, GetterError};
@@ -55,8 +56,8 @@ impl GetterDef {
         self.needs_doc_alias
     }
 
-    pub fn log(&self, scope: &dyn Display) {
-        self.getter.log(scope);
+    pub fn log(&self, path: &Path, scope: &dyn Display) {
+        self.getter.log(path, scope);
     }
 }
 

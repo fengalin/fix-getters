@@ -3,6 +3,7 @@
 use rules::ReturnsBool;
 use std::{
     cell::{Ref, RefCell},
+    path::Path,
     rc::Rc,
 };
 use syn::visit::{self, Visit};
@@ -12,26 +13,28 @@ use crate::{GetterCallCollection, TSGetterCallParser};
 
 /// Syn Visitor in search of renamable [`Getter`](utils::Getter) calls.
 #[derive(Debug)]
-pub struct GetterCallVisitor {
+pub struct GetterCallVisitor<'path> {
     scope_stack: Vec<Rc<RefCell<Scope>>>,
     getter_collection: GetterCallCollection,
-    doc_code_parser: DocCodeParser<TSGetterCallParser>,
+    path: &'path Path,
+    doc_code_parser: DocCodeParser<TSGetterCallParser<'path>>,
 }
 
-impl GetterVisitor for GetterCallVisitor {
+impl<'path> GetterVisitor for GetterCallVisitor<'path> {
     type GetterCollection = GetterCallCollection;
 
-    fn visit(syntax_tree: &syn::File, getter_collection: &GetterCallCollection) {
+    fn visit(path: &Path, syntax_tree: &syn::File, getter_collection: &GetterCallCollection) {
         let mut visitor = GetterCallVisitor {
-            doc_code_parser: DocCodeParser::<TSGetterCallParser>::new(&getter_collection),
             getter_collection: GetterCallCollection::clone(getter_collection),
+            doc_code_parser: DocCodeParser::<TSGetterCallParser>::new(path, &getter_collection),
+            path,
             scope_stack: Vec::new(),
         };
         visitor.visit_file(syntax_tree);
     }
 }
 
-impl GetterCallVisitor {
+impl<'path> GetterCallVisitor<'path> {
     fn process(&mut self, method_call: &syn::ExprMethodCall) {
         use NonGetterReason::*;
 
@@ -58,7 +61,7 @@ impl GetterCallVisitor {
             return;
         }
 
-        getter.log(&self.scope());
+        getter.log(self.path, &self.scope());
         self.getter_collection.add(getter);
     }
 
@@ -76,7 +79,7 @@ impl GetterCallVisitor {
     }
 }
 
-impl<'ast> Visit<'ast> for GetterCallVisitor {
+impl<'ast, 'path> Visit<'ast> for GetterCallVisitor<'path> {
     fn visit_item(&mut self, node: &'ast syn::Item) {
         self.push_scope(node);
         visit::visit_item(self, node);
@@ -91,8 +94,9 @@ impl<'ast> Visit<'ast> for GetterCallVisitor {
     fn visit_macro(&mut self, node: &'ast syn::Macro) {
         self.push_scope(node);
         TSGetterCallParser::parse(
+            self.path,
+            &self.scope(),
             &node.tokens,
-            &self.scope_stack.last().expect("empty scope stack"),
             &self.getter_collection,
         );
         self.pop_scope();

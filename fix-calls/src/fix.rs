@@ -13,9 +13,10 @@ use crate::{GetterCallCollection, GetterCallVisitor};
 ///
 /// If `output_path` is specified, the result will be written there,
 /// otherwise the input files are overwritten.
-pub(crate) fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Error> {
+pub fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Error> {
     // Analyze Rust file
-    let source_code = fs::read_to_string(path).map_err(Error::ReadFile)?;
+    let source_code =
+        fs::read_to_string(path).map_err(|err| Error::ReadFile(path.to_owned(), err))?;
     let syntax_tree = match syn::parse_file(&source_code) {
         Ok(syntax_tree) => syntax_tree,
         Err(error) => {
@@ -24,7 +25,7 @@ pub(crate) fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Erro
     };
 
     let getter_collection = GetterCallCollection::default();
-    GetterCallVisitor::visit(&syntax_tree, &getter_collection);
+    GetterCallVisitor::visit(path, &syntax_tree, &getter_collection);
 
     let output_path = match output_path {
         Some(output_path) => output_path,
@@ -37,7 +38,7 @@ pub(crate) fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Erro
     }
 
     // Write result
-    let f = fs::File::create(output_path).map_err(Error::WriteFile)?;
+    let f = fs::File::create(output_path).map_err(|err| Error::WriteFile(path.to_owned(), err))?;
     let mut writer = std::io::BufWriter::new(f);
 
     for (line_idx, line) in source_code.lines().enumerate() {
@@ -48,13 +49,19 @@ pub(crate) fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Erro
                 let target = format!(".{}(", getter_call.new_name.as_str());
                 line = Cow::from(line.replacen(&origin, &target, 1));
             }
-            writer.write(line.as_bytes()).map_err(Error::WriteFile)?;
+            writer
+                .write(line.as_bytes())
+                .map_err(|err| Error::WriteFile(path.to_owned(), err))?;
         } else {
             // No changes for this line
-            writer.write(line.as_bytes()).map_err(Error::WriteFile)?;
+            writer
+                .write(line.as_bytes())
+                .map_err(|err| Error::WriteFile(path.to_owned(), err))?;
         }
 
-        writer.write(&[b'\n']).map_err(Error::WriteFile)?;
+        writer
+            .write(&[b'\n'])
+            .map_err(|err| Error::WriteFile(path.to_owned(), err))?;
     }
 
     Ok(())

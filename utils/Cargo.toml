@@ -11,7 +11,6 @@ repository = "https://github.com/fengalin/fix-getters"
 edition = "2018"
 
 [dependencies]
-cfg-if = "1.0"
 log = { version = "0.4", optional = true }
 proc-macro2 = { version = "1.0", features = ["span-locations"] }
 rules = { package = "fix-getters-rules", path = "../rules" }

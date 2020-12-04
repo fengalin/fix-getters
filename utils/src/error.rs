@@ -1,18 +1,18 @@
 //! `fix-getters` global level `Error`.
 
 use std::fmt::{self, Display};
-use std::io;
+use std::{io, path::PathBuf};
 
 /// `fix-getters` global level `Error`.
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum Error {
     CheckEntry(rules::dir_entry::CheckError),
-    CreateDir(String, io::Error),
-    ReadDir(io::Error),
-    ReadEntry(io::Error),
-    ReadFile(io::Error),
-    WriteFile(io::Error),
+    CreateDir(PathBuf, io::Error),
+    ReadDir(PathBuf, io::Error),
+    ReadEntry(PathBuf, io::Error),
+    ReadFile(PathBuf, io::Error),
+    WriteFile(PathBuf, io::Error),
     ParseFile(ParseFileError),
 }
 
@@ -21,12 +21,12 @@ impl Display for Error {
         use self::Error::*;
 
         match self {
-            CheckEntry(err) => write!(f, "unable to check dir entry: {}", err),
-            CreateDir(name, err) => write!(f, "unable to create dir {}: {}", name, err),
-            ReadDir(err) => write!(f, "unable to read dir: {}", err),
-            ReadEntry(err) => write!(f, "unable to read dir entry: {}", err),
-            ReadFile(err) => write!(f, "unable to read file: {}", err),
-            WriteFile(err) => write!(f, "unable to write file: {}", err),
+            CheckEntry(err) => err.fmt(f),
+            CreateDir(path, err) => write!(f, "Unable to create dir {:?} {}", path, err),
+            ReadDir(path, err) => write!(f, "Unable to read dir {:?}: {}", path, err),
+            ReadEntry(path, err) => write!(f, "Unable to read dir entry {:?}: {}", path, err),
+            ReadFile(path, err) => write!(f, "Unable to read file {:?}: {}", path, err),
+            WriteFile(path, err) => write!(f, "Unable to write file {:?}: {}", path, err),
             ParseFile(err) => err.fmt(f),
         }
     }
@@ -44,12 +44,12 @@ impl From<rules::dir_entry::CheckError> for Error {
 #[derive(Debug)]
 pub struct ParseFileError {
     error: syn::Error,
-    filepath: std::path::PathBuf,
+    filepath: PathBuf,
     source_code: String,
 }
 
 impl ParseFileError {
-    pub fn new(error: syn::Error, filepath: std::path::PathBuf, source_code: String) -> Self {
+    pub fn new(error: syn::Error, filepath: PathBuf, source_code: String) -> Self {
         ParseFileError {
             error,
             filepath,

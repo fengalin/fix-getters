@@ -7,6 +7,7 @@ use std::{cell::RefCell, fmt, rc::Rc, string::ToString};
 pub enum Scope {
     Attribute(String),
     Const(String),
+    Documentation,
     Fn(String),
     Macro(String),
     Static(String),
@@ -81,6 +82,7 @@ impl fmt::Display for Scope {
         match self {
             Attribute(name) => write!(f, "attr {}", name),
             Const(name) => write!(f, "const {}", name),
+            Documentation => f.write_str("doc code"),
             Fn(name) => write!(f, "fn {}", name),
             Macro(name) => write!(f, "macro! {}", name),
             Static(name) => write!(f, "static {}", name),
