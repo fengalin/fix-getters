@@ -71,12 +71,12 @@ impl Getter {
     /// Logs details about the getter at the appropriate log level.
     #[cfg(feature = "log")]
     pub fn log(&self, path: &Path, scope: &dyn Display) {
-        if self.new_name.is_fixed() {
-            debug!("* {} {}", scope, self);
-        } else if self.new_name.is_substituted() {
-            warn!("{:?} {} {}", path, scope, self);
-        } else {
+        if self.new_name.is_regular() {
             trace!("* {} {}", scope, self);
+        } else if self.new_name.is_fixed() {
+            debug!("* {} {}", scope, self);
+        } else {
+            warn!("{:?} {} {}", path, scope, self);
         }
     }
 }

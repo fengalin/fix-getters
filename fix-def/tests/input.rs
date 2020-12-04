@@ -77,7 +77,19 @@ impl MyType {
         true
     }
 
-    const fn get_do_ts(&self) -> bool {
+    const fn get_is_emit_eos(&self) -> bool {
+        true
+    }
+
+    const fn get_is_activated(&self) -> bool {
+        true
+    }
+
+    fn get_has_entry(&self) -> bool {
+        true
+    }
+
+    fn get_does_ts(&self) -> bool {
         true
     }
 

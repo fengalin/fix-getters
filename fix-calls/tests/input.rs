@@ -60,7 +60,10 @@ fn from_my_type_might_be_bool() -> bool {
     let my_instance = MyType { foo: 42u64 };
     let (_, _) = (my_instance.get_mute(), my_instance.get_emit_eos());
     println!("{} {}", my_instance.get_mute(), my_instance.get_emit_eos());
+    let _ = my_instance.get_is_emit_eos();
     let _ = my_instance.get_do_ts_param::<u64>();
+    let _ = my_instance.get_does_ts();
+    let _ = my_instance.get_is_active();
     let _ = my_instance.get_activable();
     let _ = my_instance.get_activable_bool();
     let _ = my_instance.get_result();
@@ -107,11 +110,23 @@ impl MyType {
         true
     }
 
+    fn get_is_emit_eos(&self) -> bool {
+        true
+    }
+
+    fn get_does_ts(&self) -> bool {
+        true
+    }
+
     fn get_do_ts_param<T: From<bool>>(&self) -> T {
         true.into()
     }
 
     fn get_active(&self) -> bool {
+        true
+    }
+
+    fn get_is_active(&self) -> bool {
         true
     }
 
