@@ -179,7 +179,7 @@ pub fn try_rename_would_be_getter(
     name: &str,
     returns_bool: impl Into<ReturnsBool>,
 ) -> Result<NewName, RenameError> {
-    let suffix = match getter_suffix(name) {
+    let suffix = match name.strip_prefix("get_") {
         Some(suffix) => suffix,
         None => return Err(RenameError::NotGetFn),
     };
@@ -197,45 +197,50 @@ pub fn try_rename_getter_suffix(
     returns_bool: impl Into<ReturnsBool>,
 ) -> Result<NewName, RenameError> {
     use ReturnsBool::*;
-    match returns_bool.into() {
-        False => (),
+    let returns_bool = match returns_bool.into() {
+        False => ReturnsBool::False,
         True => return Ok(rename_bool_getter(suffix)),
         Maybe => {
             if let Some(rename) = guesstimate_boolness_then_rename(suffix) {
                 return Ok(rename);
             }
+            ReturnsBool::Maybe
         }
-    }
+    };
 
     let splits: Vec<&str> = suffix.splitn(2, '_').collect();
     if splits.len() > 1 && PREFIX_TO_POSTFIX.contains(splits[0]) {
-        Ok(NewName::Fixed(format!("{}_{}", splits[1], splits[0])))
+        Ok(NewName::Fixed {
+            new_name: format!("{}_{}", splits[1], splits[0]),
+            returns_bool,
+        })
     } else if RESERVED.contains(suffix) {
         Err(RenameError::Reserved)
     } else {
-        Ok(NewName::Regular(suffix.to_string()))
+        Ok(NewName::Regular {
+            new_name: suffix.to_string(),
+            returns_bool,
+        })
     }
-}
-
-/// Retrieve the suffix from a would-be-getter function.
-///
-/// Returns `Some(*suffix*)` if name starts with `get_`.
-#[inline]
-pub fn getter_suffix(name: &str) -> Option<&str> {
-    name.strip_prefix("get_")
 }
 
 /// Applies `bool` getter name rules.
 #[inline]
 pub fn rename_bool_getter(suffix: &str) -> NewName {
     if let Some(substitute) = BOOL_EXACT_SUBSTITUTES.get(suffix) {
-        return NewName::Substituted(substitute.to_string());
+        return NewName::Substituted {
+            new_name: substitute.to_string(),
+            returns_bool: true.into(),
+        };
     }
 
     if let Some(new_name) = try_rename_bool_getter(suffix) {
         new_name
     } else {
-        NewName::Regular(format!("is_{}", suffix))
+        NewName::Regular {
+            new_name: format!("is_{}", suffix),
+            returns_bool: true.into(),
+        }
     }
 }
 
@@ -258,17 +263,29 @@ fn try_rename_bool_getter(suffix: &str) -> Option<NewName> {
         .get(splits[0])
         .map(|substitute| {
             if splits.len() == 1 {
-                NewName::Substituted(substitute.to_string())
+                NewName::Substituted {
+                    new_name: substitute.to_string(),
+                    returns_bool: true.into(),
+                }
             } else {
-                NewName::Substituted(format!("{}_{}", substitute, splits[1]))
+                NewName::Substituted {
+                    new_name: format!("{}_{}", substitute, splits[1]),
+                    returns_bool: true.into(),
+                }
             }
         })
         .or_else(|| {
             BOOL_STARTS_WITH_NO_PREFIX.get(splits[0]).map(|_| {
                 if splits.len() == 1 {
-                    NewName::NoPrefix(splits[0].to_string())
+                    NewName::NoPrefix {
+                        new_name: splits[0].to_string(),
+                        returns_bool: true.into(),
+                    }
                 } else {
-                    NewName::NoPrefix(format!("{}_{}", splits[0], splits[1]))
+                    NewName::NoPrefix {
+                        new_name: format!("{}_{}", splits[0], splits[1]),
+                        returns_bool: true.into(),
+                    }
                 }
             })
         })
@@ -276,7 +293,10 @@ fn try_rename_bool_getter(suffix: &str) -> Option<NewName> {
             // No bool rules applied to the working suffix
             if has_is_prefix {
                 // but the suffix was already `is` prefixed
-                Some(NewName::Regular(suffix.to_string()))
+                Some(NewName::Regular {
+                    new_name: suffix.to_string(),
+                    returns_bool: true.into(),
+                })
             } else {
                 None
             }
@@ -297,7 +317,10 @@ pub fn guesstimate_boolness_then_rename(suffix: &str) -> Option<NewName> {
 
     let splits: Vec<&str> = suffix.splitn(2, '_').collect();
     if splits[0].ends_with(BOOL_ABLE_PREFIX) {
-        Some(NewName::Regular(format!("is_{}", suffix)))
+        Some(NewName::Regular {
+            new_name: format!("is_{}", suffix),
+            returns_bool: true.into(),
+        })
     } else {
         None
     }
@@ -314,6 +337,14 @@ impl ReturnsBool {
     pub fn is_true(&self) -> bool {
         matches!(self, ReturnsBool::True)
     }
+
+    pub fn is_false(&self) -> bool {
+        matches!(self, ReturnsBool::False)
+    }
+
+    pub fn is_maybe(&self) -> bool {
+        matches!(self, ReturnsBool::Maybe)
+    }
 }
 
 impl From<bool> for ReturnsBool {
@@ -326,6 +357,17 @@ impl From<bool> for ReturnsBool {
     }
 }
 
+impl Display for ReturnsBool {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        use ReturnsBool::*;
+        match self {
+            False => Ok(()),
+            True => f.write_str("-> bool "),
+            Maybe => f.write_str("-> ? "),
+        }
+    }
+}
+
 /// Would-be-getter rename attempt sucessful result.
 ///
 /// Holds details about what happened.
@@ -333,13 +375,25 @@ impl From<bool> for ReturnsBool {
 #[non_exhaustive]
 pub enum NewName {
     /// Fixed name to comply to rules. Ex. `get_mut_structure` -> `structure_mut`.
-    Fixed(String),
+    Fixed {
+        new_name: String,
+        returns_bool: ReturnsBool,
+    },
     /// Regular rule: removal of the prefix or replacement with `is`.
-    Regular(String),
+    Regular {
+        new_name: String,
+        returns_bool: ReturnsBool,
+    },
     /// No prefix for `bool` getter. Ex. `get_has_entry` -> `has_entry`.
-    NoPrefix(String),
+    NoPrefix {
+        new_name: String,
+        returns_bool: ReturnsBool,
+    },
     /// Applied substitution. Ex. `get_mute` -> `is_muted`.
-    Substituted(String),
+    Substituted {
+        new_name: String,
+        returns_bool: ReturnsBool,
+    },
 }
 
 impl NewName {
@@ -347,9 +401,10 @@ impl NewName {
     pub fn as_str(&self) -> &str {
         use NewName::*;
         match self {
-            Fixed(new_name) | Substituted(new_name) | Regular(new_name) | NoPrefix(new_name) => {
-                new_name.as_str()
-            }
+            Fixed { new_name, .. }
+            | Substituted { new_name, .. }
+            | Regular { new_name, .. }
+            | NoPrefix { new_name, .. } => new_name.as_str(),
         }
     }
 
@@ -357,9 +412,31 @@ impl NewName {
     pub fn into_string(self) -> String {
         use NewName::*;
         match self {
-            Fixed(new_name) | Substituted(new_name) | Regular(new_name) | NoPrefix(new_name) => {
-                new_name
-            }
+            Fixed { new_name, .. }
+            | Substituted { new_name, .. }
+            | Regular { new_name, .. }
+            | NoPrefix { new_name, .. } => new_name,
+        }
+    }
+
+    /// Returns the boolness.
+    pub fn returns_bool(&self) -> ReturnsBool {
+        use NewName::*;
+        match self {
+            Fixed { returns_bool, .. }
+            | Substituted { returns_bool, .. }
+            | Regular { returns_bool, .. }
+            | NoPrefix { returns_bool, .. } => *returns_bool,
+        }
+    }
+
+    pub fn set_returns_bool(&mut self, new_returns_bool: impl Into<ReturnsBool>) {
+        use NewName::*;
+        match self {
+            Fixed { returns_bool, .. }
+            | Substituted { returns_bool, .. }
+            | Regular { returns_bool, .. }
+            | NoPrefix { returns_bool, .. } => *returns_bool = new_returns_bool.into(),
         }
     }
 
@@ -367,14 +444,14 @@ impl NewName {
     ///
     /// Ex. `get_mut_structure` -> `structure_mut`.
     pub fn is_fixed(&self) -> bool {
-        matches!(self, NewName::Fixed(_))
+        matches!(self, NewName::Fixed{ .. })
     }
 
     /// Returns whether renaming required substituing (part) of the name.
     ///
     /// Ex. `get_mute` -> `is_muted`.
     pub fn is_substituted(&self) -> bool {
-        matches!(self, NewName::Substituted(_))
+        matches!(self, NewName::Substituted{ .. })
     }
 
     /// Returns whether renaming used the regular strategy.
@@ -383,7 +460,7 @@ impl NewName {
     // * `get_name` -> `name`.
     // * `get_active` -> `is_active`.
     pub fn is_regular(&self) -> bool {
-        matches!(self, NewName::Regular(_))
+        matches!(self, NewName::Regular{ .. })
     }
 
     /// Returns whether renaming didn't use the `is` prefix for `bool` getter.
@@ -391,7 +468,7 @@ impl NewName {
     /// Ex.:
     // * `get_has_entry` -> `has_entry`.
     pub fn is_no_prefix(&self) -> bool {
-        matches!(self, NewName::NoPrefix(_))
+        matches!(self, NewName::NoPrefix{ .. })
     }
 }
 
@@ -399,10 +476,22 @@ impl Display for NewName {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         use NewName::*;
         match self {
-            Fixed(new_name) => write!(f, "fixed as {}", new_name),
-            Substituted(new_name) => write!(f, "substituted with {}", new_name),
-            NoPrefix(new_name) => write!(f, "kept as {}", new_name),
-            Regular(new_name) => write!(f, "renamed as {}", new_name),
+            Fixed {
+                new_name,
+                returns_bool,
+            } => write!(f, "{}fixed as {}", returns_bool, new_name),
+            Substituted {
+                new_name,
+                returns_bool,
+            } => write!(f, "{}substituted with {}", returns_bool, new_name),
+            NoPrefix {
+                new_name,
+                returns_bool,
+            } => write!(f, "{}kept as {}", returns_bool, new_name),
+            Regular {
+                new_name,
+                returns_bool,
+            } => write!(f, "{}renamed as {}", returns_bool, new_name),
         }
     }
 }
@@ -455,22 +544,27 @@ mod tests {
     fn bool_getter_rename_attempt() {
         let new_name = try_rename_bool_getter(&"mute").unwrap();
         assert!(new_name.is_substituted());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_muted");
 
         let new_name = try_rename_bool_getter(&"emit_eos").unwrap();
         assert!(new_name.is_substituted());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "emits_eos");
 
         let new_name = try_rename_bool_getter(&"has_entry").unwrap();
         assert!(new_name.is_no_prefix());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "has_entry");
 
         let new_name = try_rename_bool_getter(&"is_emit_eos").unwrap();
         assert!(new_name.is_substituted());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "emits_eos");
 
         let new_name = try_rename_bool_getter(&"is_activated").unwrap();
         assert!(new_name.is_regular());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_activated");
 
         assert!(try_rename_bool_getter(&"name").is_none());
@@ -480,22 +574,27 @@ mod tests {
     fn bool_getter_suffix() {
         let new_name = rename_bool_getter(&"result");
         assert!(new_name.is_substituted());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "result");
 
         let new_name = rename_bool_getter(&"activable");
         assert!(new_name.is_regular());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_activable");
 
         let new_name = rename_bool_getter(&"mute");
         assert!(new_name.is_substituted());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_muted");
 
         let new_name = rename_bool_getter(&"emit_eos");
         assert!(new_name.is_substituted());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "emits_eos");
 
         let new_name = rename_bool_getter(&"can_acquire");
         assert!(new_name.is_no_prefix());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "can_acquire");
     }
 
@@ -505,24 +604,31 @@ mod tests {
         assert!(guesstimate_boolness_then_rename(&"name").is_none());
 
         let new_name = guesstimate_boolness_then_rename(&"mute").unwrap();
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_muted");
 
         let new_name = guesstimate_boolness_then_rename(&"does_ts").unwrap();
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "does_ts");
 
         let new_name = guesstimate_boolness_then_rename(&"emit_eos").unwrap();
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "emits_eos");
 
         let new_name = guesstimate_boolness_then_rename(&"emits_eos").unwrap();
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "emits_eos");
 
         let new_name = guesstimate_boolness_then_rename(&"is_emits_eos").unwrap();
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "emits_eos");
 
         let new_name = guesstimate_boolness_then_rename(&"is_activated").unwrap();
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_activated");
 
         let new_name = guesstimate_boolness_then_rename(&"activable").unwrap();
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_activable");
     }
 
@@ -530,16 +636,19 @@ mod tests {
     fn rename_getter_non_bool() {
         let new_name = try_rename_would_be_getter(&"get_structure", false).unwrap();
         assert!(new_name.is_regular());
+        assert!(new_name.returns_bool().is_false());
         assert_eq!(new_name, "structure");
 
         // Bool-alike, but not a bool
         let new_name = try_rename_would_be_getter(&"get_activable", false).unwrap();
         assert!(new_name.is_regular());
+        assert!(new_name.returns_bool().is_false());
         assert_eq!(new_name, "activable");
 
         // Prefix to postfix
         let new_name = try_rename_would_be_getter(&"get_mut_structure", false).unwrap();
         assert!(new_name.is_fixed());
+        assert!(new_name.returns_bool().is_false());
         assert_eq!(new_name, "structure_mut");
 
         assert!(try_rename_would_be_getter(&"get_mut", false)
@@ -554,42 +663,52 @@ mod tests {
     fn rename_getter_bool() {
         let new_name = try_rename_would_be_getter(&"get_structure", true).unwrap();
         assert!(new_name.is_regular());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_structure");
 
         let new_name = try_rename_would_be_getter(&"get_mute", true).unwrap();
         assert!(new_name.is_substituted());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_muted");
 
         let new_name = try_rename_would_be_getter(&"get_emit_eos", true).unwrap();
         assert!(new_name.is_substituted());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "emits_eos");
 
         let new_name = try_rename_would_be_getter(&"get_emits_eos", true).unwrap();
         assert!(new_name.is_no_prefix());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "emits_eos");
 
         let new_name = try_rename_would_be_getter(&"get_is_emit_eos", true).unwrap();
         assert!(new_name.is_substituted());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "emits_eos");
 
         let new_name = try_rename_would_be_getter(&"get_is_activated", true).unwrap();
         assert!(new_name.is_regular());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_activated");
 
         let new_name = try_rename_would_be_getter(&"get_activable", true).unwrap();
         assert!(new_name.is_regular());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_activable");
 
         let new_name = try_rename_would_be_getter(&"get_mut", true).unwrap();
         assert!(new_name.is_regular());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_mut");
 
         let new_name = try_rename_would_be_getter(&"get_overwrite", true).unwrap();
         assert!(new_name.is_substituted());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "overwrites");
 
         let new_name = try_rename_would_be_getter(&"get_overwrite_mode", true).unwrap();
         assert!(new_name.is_regular());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_overwrite_mode");
 
         assert!(try_rename_would_be_getter(&"not_a_getter", true)
@@ -601,30 +720,37 @@ mod tests {
     fn rename_getter_maybe_bool() {
         let new_name = try_rename_would_be_getter(&"get_structure", ReturnsBool::Maybe).unwrap();
         assert!(new_name.is_regular());
+        assert!(new_name.returns_bool().is_maybe());
         assert_eq!(new_name, "structure");
 
         let new_name = try_rename_would_be_getter(&"get_mute", ReturnsBool::Maybe).unwrap();
         assert!(new_name.is_substituted());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_muted");
 
         let new_name = try_rename_would_be_getter(&"get_emit_eos", ReturnsBool::Maybe).unwrap();
         assert!(new_name.is_substituted());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "emits_eos");
 
         let new_name = try_rename_would_be_getter(&"get_emits_eos", ReturnsBool::Maybe).unwrap();
         assert!(new_name.is_no_prefix());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "emits_eos");
 
         let new_name = try_rename_would_be_getter(&"get_is_emit_eos", ReturnsBool::Maybe).unwrap();
         assert!(new_name.is_substituted());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "emits_eos");
 
         let new_name = try_rename_would_be_getter(&"get_is_activated", ReturnsBool::Maybe).unwrap();
         assert!(new_name.is_regular());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_activated");
 
         let new_name = try_rename_would_be_getter(&"get_activable", ReturnsBool::Maybe).unwrap();
         assert!(new_name.is_regular());
+        assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_activable");
 
         assert!(try_rename_would_be_getter(&"get_mut", ReturnsBool::Maybe)

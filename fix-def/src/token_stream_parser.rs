@@ -1,5 +1,6 @@
 //! Macro parser in search of renamable getter definitions.
 
+use log::trace;
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
 use std::path::Path;
 use syn::buffer::{Cursor, TokenBuffer};
@@ -39,121 +40,172 @@ impl<'scope> TokenStreamParser for TSGetterDefParser<'scope> {
 
 impl<'scope> TSGetterDefParser<'scope> {
     fn parse_(&mut self, mut rest: Cursor) {
-        use NonGetterReason::*;
-
         while let Some((tt, next)) = rest.token_tree() {
             // Find patterns `.get_suffix()`
             match tt {
                 TokenTree::Punct(punct) => {
                     let char_ = punct.as_char();
+                    if char_ == ';' {
+                        if let Some(maybe) = self.state.take_maybe_getter() {
+                            self.process_maybe_getter(maybe);
+                        }
+                        rest = next;
+                        continue;
+                    }
+
                     match self.state.take() {
-                        State::MaybeGetterArgList(getter) => {
-                            if char_ == '&' {
-                                self.state = State::MaybeGetterRef(getter);
-                            } else {
-                                getter::skip(self.scope, getter.name(), &NotAMethod, getter.line());
-                            }
-                        }
-                        State::MaybeGetterSelf(getter) => match char_ {
-                            '-' => self.state = State::MaybeGetterRet(getter),
-                            ',' => {
-                                getter::skip(
-                                    self.scope,
-                                    getter.name(),
-                                    &MultipleArgs,
-                                    getter.line(),
-                                );
-                            }
-                            _ => (),
-                        },
-                        State::MaybeGetterRet(getter) => {
-                            match char_ {
-                                '>' | '&' => self.state = State::MaybeGetterRet(getter),
-                                '$' => {
-                                    // Return type is a macro argument
-                                    self.getter_collection.add(getter);
-                                }
-                                _ => (),
-                            }
-                        }
-                        State::MaybeGetter(getter) => {
+                        State::None => (),
+                        State::Fn => self.state = State::Fn,
+                        State::NamedFn(maybe) => {
                             if char_ == '<' {
-                                getter::skip(
-                                    self.scope,
-                                    getter.name(),
-                                    &GenericTypeParam,
-                                    getter.line(),
-                                );
+                                self.state = State::ParamList(maybe);
+                            } else {
+                                // unexpected
+                                trace!("ts {:?} NamedFn({:?})", punct, maybe);
                             }
                         }
-                        _ => (),
+                        State::ParamList(maybe) => {
+                            if char_ == '\'' {
+                                self.state = State::ParamLt(maybe);
+                            } else {
+                                self.state = State::ParamList(maybe);
+                            }
+                        }
+                        State::ParamLt(maybe) => {
+                            // unexpected
+                            trace!("ts {:?} ParamLt({:?})", punct, maybe);
+                        }
+                        State::ArgList(mut maybe) => match char_ {
+                            '&' => self.state = State::ArgRef(maybe),
+                            '\'' => self.state = State::ArgRefLt(maybe),
+                            ',' => {
+                                maybe.has_multiple_args = true;
+                                self.state = State::ArgList(maybe);
+                            }
+                            '-' => self.state = State::Ret(maybe),
+                            _ => {
+                                self.state = State::ArgList(maybe);
+                            }
+                        },
+                        State::ArgRef(maybe) => {
+                            if char_ == '\'' {
+                                self.state = State::ArgRefLt(maybe);
+                            } else {
+                                self.state = State::ArgList(maybe);
+                            }
+                        }
+                        State::ArgRefLt(maybe) => self.state = State::ArgRef(maybe),
+                        State::ArgSelf(mut maybe) => match char_ {
+                            '-' => self.state = State::Ret(maybe),
+                            ',' => {
+                                maybe.has_multiple_args = true;
+                                self.state = State::ArgList(maybe);
+                            }
+                            _ => self.state = State::ArgList(maybe),
+                        },
+                        State::Ret(mut maybe) => match char_ {
+                            '>' | '&' => self.state = State::Ret(maybe),
+                            '\'' => self.state = State::RetLt(maybe),
+                            _ => {
+                                maybe.getter.set_returns_bool(false);
+                                self.process_maybe_getter(maybe);
+                            }
+                        },
+                        State::RetLt(maybe) => self.state = State::RetLt(maybe),
                     }
                 }
-                TokenTree::Ident(ident) => match self.state.take() {
-                    State::None => {
-                        if ident == "fn" {
-                            self.state = State::Fn;
+                TokenTree::Ident(ident) => {
+                    if ident == "fn" {
+                        if let Some(maybe) = self.state.take_maybe_getter() {
+                            self.process_maybe_getter(maybe);
                         }
+                        self.state = State::Fn;
+                        rest = next;
+                        continue;
                     }
-                    State::Fn => {
-                        let res = self.getter_collection.try_new_getter(
-                            ident.to_string(),
-                            ReturnsBool::Maybe,
-                            ident.span().start().line,
-                            // easier to add all doc aliases everywhere
-                            // than parsing scopes in macros
-                            true,
-                        );
-                        match res {
-                            Ok(getter) => {
-                                // Will log when the getter is confirmed
-                                self.state = State::MaybeGetter(getter)
+
+                    match self.state.take() {
+                        State::None => (),
+                        State::Fn => {
+                            let res = self.getter_collection.try_new_getter(
+                                ident.to_string(),
+                                // Don't assume boolness before we actual know
+                                // from the signature.
+                                ReturnsBool::False,
+                                ident.span().start().line,
+                            );
+                            match res {
+                                Ok(getter) => {
+                                    self.state = State::new_named_fn(getter);
+                                }
+                                Err(err) => err.log(self.scope),
                             }
-                            Err(err) => err.log(self.scope),
                         }
-                    }
-                    State::MaybeGetterRef(getter) => {
-                        if ident == "self" {
-                            self.state = State::MaybeGetterSelf(getter);
-                        } else if ident == "mut" {
-                            self.state = State::MaybeGetterRef(getter);
-                        } else {
-                            getter::skip(self.scope, getter.name(), &NotAMethod, getter.line());
+                        State::NamedFn(maybe) => {
+                            // unexpected
+                            trace!("ts {:?} NamedFn({:?})", ident, maybe);
                         }
-                    }
-                    State::MaybeGetterRet(mut getter) => {
-                        getter.set_returns_bool(ident == "bool");
-                        getter.log(self.path, self.scope);
-                        self.getter_collection.add(getter);
-                    }
-                    State::MaybeGetterSelf(getter) => {
-                        getter::skip(self.scope, getter.name(), &NonSelfUniqueArg, getter.line());
-                    }
-                    State::MaybeGetterArgList(getter) => {
-                        if ident != "self" {
-                            getter::skip(self.scope, getter.name(), &NotAMethod, getter.line());
+                        State::ParamList(mut maybe) => {
+                            maybe.has_gen_params = true;
+                            self.state = State::ParamList(maybe);
                         }
-                        // else is unlikely: a getter consuming self
+                        State::ParamLt(maybe) => self.state = State::ParamList(maybe),
+                        State::ArgList(maybe) => {
+                            // if the getter consumes self, keep the get prefix
+                            // => don't consider it a method
+                            self.state = State::ArgList(maybe);
+                        }
+                        State::ArgRefLt(maybe) => self.state = State::ArgRef(maybe),
+                        State::ArgRef(mut maybe) => {
+                            if ident == "self" {
+                                maybe.is_method = true;
+                                self.state = State::ArgSelf(maybe);
+                            } else if ident == "mut" {
+                                self.state = State::ArgRef(maybe);
+                            }
+                        }
+                        State::ArgSelf(maybe) => {
+                            // unexpected, but keep going
+                            self.state = State::ArgList(maybe);
+                        }
+                        State::Ret(mut maybe) => {
+                            if maybe.getter.returns_bool().is_false() && ident == "bool" {
+                                // Set boolness as known so far
+                                // will be cleared if prooved wrong later.
+                                maybe.getter.set_returns_bool(true);
+                                self.state = State::Ret(maybe);
+                            } else {
+                                // not returning exactly one bool
+                                maybe.getter.set_returns_bool(false);
+                                self.process_maybe_getter(maybe);
+                            }
+                        }
+                        State::RetLt(maybe) => self.state = State::Ret(maybe),
                     }
-                    _ => (),
-                },
+                }
                 TokenTree::Group(group) => {
                     match self.state.take() {
-                        State::MaybeGetterRet(mut getter) => {
-                            // Returning complexe type
-                            getter.set_returns_bool(false);
-                            self.getter_collection.add(getter);
-                        }
-                        State::MaybeGetter(getter) => {
-                            if group.delimiter() == Delimiter::Parenthesis {
-                                if !group.stream().is_empty() {
-                                    self.state = State::MaybeGetterArgList(getter);
-                                } else {
-                                    getter::skip(self.scope, getter.name(), &NoArgs, getter.line());
-                                }
+                        State::None => (),
+                        State::Ret(mut maybe) => {
+                            if let Delimiter::Brace = group.delimiter() {
+                                // Implementation begins
+                                self.process_maybe_getter(maybe);
+                            } else {
+                                // Returning complexe type
+                                maybe.getter.set_returns_bool(false);
+                                self.process_maybe_getter(maybe);
                             }
                         }
-                        _ => (),
+                        State::NamedFn(mut maybe) | State::ParamList(mut maybe) => {
+                            if let Delimiter::Parenthesis = group.delimiter() {
+                                if group.stream().is_empty() {
+                                    // No args, but we still need to check boolness
+                                    maybe.has_no_args = true;
+                                }
+                                self.state = State::ArgList(maybe);
+                            }
+                        }
+                        other => trace!("ts {:?} {:?}", group, other),
                     }
 
                     if !group.stream().is_empty() {
@@ -167,23 +219,114 @@ impl<'scope> TSGetterDefParser<'scope> {
             rest = next;
         }
     }
+
+    fn process_maybe_getter(&mut self, maybe: MaybeGetter) {
+        use NonGetterReason::*;
+
+        if !maybe.getter.returns_bool().is_true() {
+            // not a bool getter
+            if maybe.has_no_args {
+                getter::skip(
+                    self.scope,
+                    maybe.getter.name(),
+                    &NoArgs,
+                    maybe.getter.line(),
+                );
+                return;
+            }
+            if !maybe.is_method {
+                getter::skip(
+                    self.scope,
+                    maybe.getter.name(),
+                    &NotAMethod,
+                    maybe.getter.line(),
+                );
+                return;
+            }
+            if maybe.has_gen_params {
+                getter::skip(
+                    self.scope,
+                    maybe.getter.name(),
+                    &GenericTypeParam,
+                    maybe.getter.line(),
+                );
+                return;
+            }
+            if maybe.has_multiple_args {
+                getter::skip(
+                    self.scope,
+                    maybe.getter.name(),
+                    &MultipleArgs,
+                    maybe.getter.line(),
+                );
+                return;
+            }
+        }
+
+        maybe.getter.log(self.path, self.scope);
+        self.getter_collection.add(maybe.getter);
+    }
+}
+
+#[derive(Debug)]
+struct MaybeGetter {
+    getter: GetterDef,
+    has_gen_params: bool,
+    is_method: bool,
+    has_multiple_args: bool,
+    has_no_args: bool,
 }
 
 #[derive(Debug)]
 enum State {
     None,
     Fn,
-    MaybeGetter(GetterDef),
-    MaybeGetterArgList(GetterDef),
-    MaybeGetterRef(GetterDef),
-    MaybeGetterSelf(GetterDef),
-    MaybeGetterRet(GetterDef),
+    NamedFn(MaybeGetter),
+    ParamList(MaybeGetter),
+    ParamLt(MaybeGetter),
+    ArgList(MaybeGetter),
+    ArgRef(MaybeGetter),
+    ArgRefLt(MaybeGetter),
+    ArgSelf(MaybeGetter),
+    Ret(MaybeGetter),
+    RetLt(MaybeGetter),
 }
 
 impl State {
+    fn new_named_fn(getter: GetterDef) -> Self {
+        State::NamedFn(MaybeGetter {
+            getter,
+            has_gen_params: false,
+            is_method: false,
+            has_multiple_args: false,
+            has_no_args: false,
+        })
+    }
+
     /// Returns current state replacing `self` with the default value.
     fn take(&mut self) -> Self {
         std::mem::replace(self, State::None)
+    }
+
+    #[allow(unused)]
+    fn as_ref_maybe_getter(&self) -> Option<&MaybeGetter> {
+        use State::*;
+
+        match &self {
+            None | Fn => Option::None,
+            NamedFn(maybe) | ParamList(maybe) | ParamLt(maybe) | ArgList(maybe) | ArgRef(maybe)
+            | ArgRefLt(maybe) | ArgSelf(maybe) | Ret(maybe) | RetLt(maybe) => Some(maybe),
+        }
+    }
+
+    fn take_maybe_getter(&mut self) -> Option<MaybeGetter> {
+        use State::*;
+
+        match self.take() {
+            None | Fn => Option::None,
+            NamedFn(maybe) | ParamList(maybe) | ParamLt(maybe) | ArgList(maybe) | ArgRef(maybe)
+            | ArgRefLt(maybe) | ArgSelf(maybe) | Ret(maybe) | RetLt(maybe) => Some(maybe),
+        }
     }
 }
 

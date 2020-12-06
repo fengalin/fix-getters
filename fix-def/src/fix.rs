@@ -49,8 +49,8 @@ pub fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Error> {
             }
 
             // Rename getter
-            let origin = format!("fn {}(", getter_def.name());
-            let target = format!("fn {}(", getter_def.new_name().as_str());
+            let origin = format!("fn {}", getter_def.name());
+            let target = format!("fn {}", getter_def.new_name().as_str());
 
             writer
                 .write(line.replacen(&origin, &target, 1).as_bytes())

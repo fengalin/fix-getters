@@ -1,4 +1,4 @@
-use rules::{function, getter_suffix, NewName, ReturnsBool};
+use rules::{NewName, ReturnsBool};
 use std::{
     cell::RefCell,
     collections::HashMap,
@@ -19,11 +19,10 @@ impl GetterDef {
         name: String,
         returns_bool: impl Into<ReturnsBool> + Copy,
         line: usize,
-        needs_doc_alias: bool,
     ) -> Result<Self, GetterError> {
         Getter::try_new(name, returns_bool, line).map(|getter| GetterDef {
             getter,
-            needs_doc_alias,
+            needs_doc_alias: false,
         })
     }
 
@@ -35,17 +34,12 @@ impl GetterDef {
         &self.getter.new_name
     }
 
-    pub fn set_returns_bool(&mut self, returns_bool: impl Into<ReturnsBool>) {
-        let returns_bool = returns_bool.into();
-        if self.getter.returns_bool != returns_bool {
-            self.getter.returns_bool = returns_bool;
+    pub fn returns_bool(&self) -> ReturnsBool {
+        self.getter.new_name.returns_bool()
+    }
 
-            if returns_bool.is_true() {
-                self.getter.new_name = function::rename_bool_getter(
-                    getter_suffix(&self.getter.name).expect("prefix already checked"),
-                );
-            }
-        }
+    pub fn set_returns_bool(&mut self, returns_bool: impl Into<ReturnsBool>) {
+        self.getter.set_returns_bool(returns_bool);
     }
 
     pub fn line(&self) -> usize {
@@ -54,6 +48,10 @@ impl GetterDef {
 
     pub fn needs_doc_alias(&self) -> bool {
         self.needs_doc_alias
+    }
+
+    pub fn set_needs_doc_alias(&mut self, needs_doc_alias: bool) {
+        self.needs_doc_alias = needs_doc_alias;
     }
 
     pub fn log(&self, path: &Path, scope: &dyn Display) {
@@ -120,14 +118,8 @@ impl GetterDefCollection {
         name: String,
         returns_bool: impl Into<ReturnsBool> + Copy,
         line: usize,
-        needs_doc_alias: bool,
     ) -> Result<GetterDef, GetterError> {
-        GetterDef::try_new(
-            name,
-            returns_bool,
-            line + self.offset,
-            needs_doc_alias && !self.blocks_doc_alias,
-        )
+        GetterDef::try_new(name, returns_bool, line + self.offset)
     }
 
     pub fn add(&self, getter_def: GetterDef) {

@@ -28,28 +28,32 @@ const MY_CONST_INSTANCE: MyType = MyType { foo: 42u64 };
 
 const MY_CONST: u64 = MY_CONST_INSTANCE.get_foo();
 
-const MY_CONST_NO_SELF: u64 = get_no_self(42u64);
+const MY_CONST_NOT_METHOD: u64 = get_not_method(42u64);
+
+const MY_CONST_NOT_METHOD_PARAM: u64 = get_not_method_param::<u64>(42u64);
 
 static My_STATIC: u64 = MyType::get_no_self(42u64);
+
+const MY_BOOLABLE: bool = get_boolable(42u64);
+
+const MY_BOOL_IS_EQUAL: bool = get_is_equal(42u64);
+
+const MY_BOOL_PARAM: bool = get_bool_param::<u64>(42u64);
 
 macro_rules! get_via_macro (
     ($self: expr) => ({
         let _ = $self.get_do_ts_param::<u64>();
         let _ = $self.get_activable();
         let _ = $self.get_result();
-        let _ = $self.get_multiple_arg(42u64);
+        let _ = $self.get_multiple_arg($self.get_foo());
         let ret = $self.get_foo();
         ret
     })
 );
 
-const fn get_no_self(other: u64) -> u64 {
-    other
-}
-
 fn from_my_type() -> u64 {
     let my_instance = MyType { foo: 42u64 };
-    let _ = my_instance.get_multiple_arg(42u64);
+    let _ = my_instance.get_multiple_arg(my_instance.get_foo());
     let other = my_instance.get_foo();
     let other = MyType { foo: other }.get_foo();
     let other = MyType { foo: other }.get_foo_param::<u64>();
@@ -69,6 +73,26 @@ fn from_my_type_might_be_bool() -> bool {
     let _ = my_instance.get_result();
     // This one will fail unless we introduce a list of obvious booleans.
     my_instance.get_active()
+}
+
+const fn get_not_method(other: u64) -> u64 {
+    other
+}
+
+const fn get_not_method_param<T: Sized>(other: T) -> T {
+    other
+}
+
+const fn get_boolable(other: u64) -> bool {
+    other == 42u64
+}
+
+const fn get_is_equal(other: u64) -> bool {
+    other == 42u64
+}
+
+const fn get_bool_param<T: Sized>(other: T) -> bool {
+    true
 }
 
 // From here on, these are type and method definition

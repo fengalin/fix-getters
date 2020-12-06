@@ -35,6 +35,10 @@ fn get_with_type_param<T: From<u64>>() -> T {
     42u64.into()
 }
 
+fn get_bool_type_param<T: Into<u64>>(other: T) -> bool {
+    42u64 == other.into()
+}
+
 struct MyType {
     foo: u64,
 }
@@ -101,6 +105,14 @@ impl MyType {
         self.foo
     }
 
+    fn get_foo_with_lt<'a>(&'a self) -> &'a u64 {
+        &self.foo
+    }
+
+    fn get_bool_with_param<T: Into<u64>>(&self, other: T) -> bool {
+        self.foo == other.into()
+    }
+
     fn get_foo_with_param<T: From<u64>>(&self) -> T {
         self.foo.into()
     }
@@ -111,7 +123,7 @@ impl MyType {
 }
 
 macro_rules! get_from_macro(
-    ($name:ident) => {
+    ($name:ident, $type_:ty) => {
         impl $name {
             fn get_from_macro(&self) -> u64 {
                 self.foo
@@ -133,17 +145,33 @@ macro_rules! get_from_macro(
                 other
             }
 
-            fn get_param_from_macro<T: From<u64>>(&self) -> (T, bool) {
+            fn get_foo_with_lt_from_macro<'a>(&'a self) -> &'a u64 {
+                &self.foo
+            }
+
+            fn get_boolable_with_param_from_macro<T: Into<u64>>(&self, other: T) -> bool {
+                self.foo == other.into()
+            }
+
+            fn get_not_obvious_bool_with_param_from_macro<T: Into<u64>, $type_>(&self, other: T) -> bool {
+                self.foo == other.into()
+            }
+
+            fn get_param_from_macro<T: From<u64>, $type_>(&self) -> (T, bool) {
                 (self.foo.into(), self.foo == 42u64)
             }
 
-            fn not_get_macro(&self) -> bool {
+            fn not_get_from_macro(&self) -> bool {
                 self.foo == 42u64
             }
         }
 
         fn get_sandalone(arg: u64) -> u64 {
             arg
+        }
+
+        fn get_bool_sandalone(arg: u64) -> bool {
+            arg == 42u64
         }
     }
 );

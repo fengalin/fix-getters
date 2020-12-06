@@ -38,19 +38,13 @@ impl<'path> GetterDefVisitor<'path> {
         use NonGetterReason::*;
         use Scope::*;
 
-        let needs_doc_alias = match *self.scope() {
-            StructImpl(_) | Trait(_) | Macro(_) => true,
-            TraitImpl { .. } | Attribute(_) => false,
-            _ => return,
-        };
+        let returns_bool = Self::returns_bool(sig);
+        let line = sig.ident.span().start().line;
 
-        let res = self.getter_collection.try_new_getter(
-            sig.ident.to_string(),
-            Self::returns_bool(sig),
-            sig.ident.span().start().line,
-            needs_doc_alias,
-        );
-        let getter = match res {
+        let res = self
+            .getter_collection
+            .try_new_getter(sig.ident.to_string(), returns_bool, line);
+        let mut getter = match res {
             Ok(getter) => getter,
             Err(err) => {
                 err.log(&self.scope());
@@ -58,35 +52,55 @@ impl<'path> GetterDefVisitor<'path> {
             }
         };
 
-        if !sig.generics.params.is_empty() {
-            getter::skip(
-                &self.scope(),
-                getter.name(),
-                &GenericTypeParam,
-                getter.line(),
-            );
-            return;
-        }
+        let needs_doc_alias = match *self.scope() {
+            StructImpl(_) | Trait(_) | Macro(_) => true,
+            TraitImpl { .. } | Attribute(_) => false,
+            _ => {
+                if !returns_bool {
+                    getter::skip(&self.scope(), &sig.ident.to_string(), &NotAMethod, line);
+                    return;
+                }
+                true
+            }
+        };
+        getter.set_needs_doc_alias(needs_doc_alias);
 
-        if sig.inputs.len() > 1 {
-            getter::skip(&self.scope(), getter.name(), &MultipleArgs, getter.line());
-            return;
-        }
+        if !returns_bool {
+            for param in &sig.generics.params {
+                match param {
+                    syn::GenericParam::Lifetime(_) => (),
+                    _ => {
+                        getter::skip(
+                            &self.scope(),
+                            getter.name(),
+                            &GenericTypeParam,
+                            getter.line(),
+                        );
+                        return;
+                    }
+                }
+            }
 
-        match sig.inputs.first() {
-            Some(syn::FnArg::Receiver { .. }) => (),
-            Some(_) => {
-                getter::skip(
-                    &self.scope(),
-                    getter.name(),
-                    &NonSelfUniqueArg,
-                    getter.line(),
-                );
+            if sig.inputs.len() > 1 {
+                getter::skip(&self.scope(), getter.name(), &MultipleArgs, getter.line());
                 return;
             }
-            None => {
-                getter::skip(&self.scope(), getter.name(), &NoArgs, getter.line());
-                return;
+
+            match sig.inputs.first() {
+                Some(syn::FnArg::Receiver { .. }) => (),
+                Some(_) => {
+                    getter::skip(
+                        &self.scope(),
+                        getter.name(),
+                        &NonSelfUniqueArg,
+                        getter.line(),
+                    );
+                    return;
+                }
+                None => {
+                    getter::skip(&self.scope(), getter.name(), &NoArgs, getter.line());
+                    return;
+                }
             }
         }
 

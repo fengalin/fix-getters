@@ -19,7 +19,6 @@ use rules::{self, NewName, RenameError, ReturnsBool};
 pub struct Getter {
     pub name: String,
     pub new_name: NewName,
-    pub returns_bool: ReturnsBool,
     pub line: usize,
 }
 
@@ -62,9 +61,20 @@ impl Getter {
                 name,
                 new_name,
                 line,
-                returns_bool: returns_bool.into(),
             }),
             Err(err) => Err(GetterError { name, err, line }),
+        }
+    }
+
+    pub fn returns_bool(&self) -> ReturnsBool {
+        self.new_name.returns_bool()
+    }
+
+    pub fn set_returns_bool(&mut self, returns_bool: impl Into<ReturnsBool>) {
+        let returns_bool = returns_bool.into();
+        if self.new_name.returns_bool() != returns_bool {
+            self.new_name = rules::try_rename_would_be_getter(&self.name, returns_bool)
+                .expect("conformity already checked");
         }
     }
 
@@ -83,17 +93,7 @@ impl Getter {
 
 impl Display for Getter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use ReturnsBool::*;
-        let return_str = match self.returns_bool {
-            False => "",
-            True => " -> bool",
-            Maybe => " -> ?",
-        };
-        write!(
-            f,
-            "@ {}: {}(){} {}()",
-            self.line, self.name, return_str, self.new_name,
-        )
+        write!(f, "@ {}: {}() {}()", self.line, self.name, self.new_name,)
     }
 }
 

@@ -45,8 +45,8 @@ pub fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Error> {
         if let Some(getter_calls) = getter_collection.get(line_idx) {
             let mut line = Cow::from(line);
             for getter_call in getter_calls {
-                let origin = format!(".{}(", getter_call.name);
-                let target = format!(".{}(", getter_call.new_name.as_str());
+                let origin = format!("{}", getter_call.name);
+                let target = format!("{}", getter_call.new_name.as_str());
                 line = Cow::from(line.replacen(&origin, &target, 1));
             }
             writer

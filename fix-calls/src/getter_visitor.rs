@@ -35,7 +35,7 @@ impl<'path> GetterVisitor for GetterCallVisitor<'path> {
 }
 
 impl<'path> GetterCallVisitor<'path> {
-    fn process(&mut self, method_call: &syn::ExprMethodCall) {
+    fn process_method_call(&mut self, method_call: &syn::ExprMethodCall) {
         use NonGetterReason::*;
 
         let res = self.getter_collection.try_new_getter(
@@ -51,18 +51,49 @@ impl<'path> GetterCallVisitor<'path> {
             }
         };
 
-        if method_call.turbofish.is_some() {
-            getter::skip(&self.scope(), &getter.name, &GenericTypeParam, getter.line);
-            return;
-        }
+        if !getter.returns_bool().is_true() {
+            if method_call.turbofish.is_some() {
+                getter::skip(&self.scope(), &getter.name, &GenericTypeParam, getter.line);
+                return;
+            }
 
-        if !method_call.args.is_empty() {
-            getter::skip(&self.scope(), &getter.name, &MultipleArgs, getter.line);
-            return;
+            if !method_call.args.is_empty() {
+                getter::skip(&self.scope(), &getter.name, &MultipleArgs, getter.line);
+                return;
+            }
         }
 
         getter.log(self.path, &self.scope());
         self.getter_collection.add(getter);
+    }
+
+    fn process_fn_call(&mut self, fn_call: &syn::ExprCall) {
+        use NonGetterReason::*;
+
+        if let syn::Expr::Path(expr_path) = fn_call.func.as_ref() {
+            if let Some(last) = expr_path.path.segments.last() {
+                let res = self.getter_collection.try_new_getter(
+                    last.ident.to_string(),
+                    ReturnsBool::Maybe,
+                    last.ident.span().start().line,
+                );
+                let getter = match res {
+                    Ok(getter) => getter,
+                    Err(err) => {
+                        err.log(&self.scope());
+                        return;
+                    }
+                };
+
+                if !getter.returns_bool().is_true() {
+                    getter::skip(&self.scope(), &getter.name, &NotAMethod, getter.line);
+                    return;
+                }
+
+                getter.log(self.path, &self.scope());
+                self.getter_collection.add(getter);
+            }
+        }
     }
 
     fn scope(&self) -> Ref<Scope> {
@@ -87,8 +118,13 @@ impl<'ast, 'path> Visit<'ast> for GetterCallVisitor<'path> {
     }
 
     fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
-        self.process(node);
+        self.process_method_call(node);
         visit::visit_expr_method_call(self, node);
+    }
+
+    fn visit_expr_call(&mut self, node: &'ast syn::ExprCall) {
+        self.process_fn_call(node);
+        visit::visit_expr_call(self, node);
     }
 
     fn visit_macro(&mut self, node: &'ast syn::Macro) {
