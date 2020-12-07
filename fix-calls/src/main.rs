@@ -4,11 +4,8 @@ use fix::fix;
 mod getter_call;
 pub use getter_call::GetterCallCollection;
 
-mod getter_visitor;
-pub use getter_visitor::GetterCallVisitor;
-
-pub mod token_stream_parser;
-pub use token_stream_parser::TSGetterCallParser;
+mod collectors;
+pub use collectors::*;
 
 use log::{error, info};
 use std::{path::PathBuf, process};

@@ -2,13 +2,10 @@ mod fix;
 use fix::fix;
 
 mod getter_def;
-pub use getter_def::{GetterDef, GetterDefCollection};
+pub use getter_def::GetterDef;
 
-mod getter_visitor;
-pub use getter_visitor::GetterDefVisitor;
-
-pub mod token_stream_parser;
-pub use token_stream_parser::TSGetterDefParser;
+mod collectors;
+pub use collectors::*;
 
 use log::{error, info};
 use std::{path::PathBuf, process};
