@@ -1,4 +1,5 @@
-//! Syn Visitor in search of renamable getter calls.
+//! A [`SyntaxTreeGetterCollector`](utils::SyntaxTreeGetterCollector) collecting
+//! renamable [`Getter`](utils::Getter) calls.
 
 use rules::ReturnsBool;
 use std::{
@@ -7,26 +8,30 @@ use std::{
     rc::Rc,
 };
 use syn::visit::{self, Visit};
-use utils::{getter, parser::prelude::*, DocCodeParser, NonGetterReason, Scope};
+use utils::{getter, parser::prelude::*, DocCodeGetterCollector, NonGetterReason, Scope};
 
-use crate::{GetterCallCollection, TSGetterCallParser};
+use crate::{GetterCallCollection, TSGetterCallCollector};
 
-/// Syn Visitor in search of renamable [`Getter`](utils::Getter) calls.
+/// A [`SyntaxTreeGetterCollector`](utils::SyntaxTreeGetterCollector) collecting
+/// renamable [`Getter`](utils::Getter) calls.
 #[derive(Debug)]
-pub struct GetterCallVisitor<'path> {
+pub struct STGetterCallCollector<'path> {
     scope_stack: Vec<Rc<RefCell<Scope>>>,
     getter_collection: GetterCallCollection,
     path: &'path Path,
-    doc_code_parser: DocCodeParser<TSGetterCallParser<'path>>,
+    doc_code_collector: DocCodeGetterCollector<TSGetterCallCollector<'path>>,
 }
 
-impl<'path> GetterVisitor for GetterCallVisitor<'path> {
+impl<'path> SyntaxTreeGetterCollector for STGetterCallCollector<'path> {
     type GetterCollection = GetterCallCollection;
 
-    fn visit(path: &Path, syntax_tree: &syn::File, getter_collection: &GetterCallCollection) {
-        let mut visitor = GetterCallVisitor {
+    fn collect(path: &Path, syntax_tree: &syn::File, getter_collection: &GetterCallCollection) {
+        let mut visitor = STGetterCallCollector {
             getter_collection: GetterCallCollection::clone(getter_collection),
-            doc_code_parser: DocCodeParser::<TSGetterCallParser>::new(path, &getter_collection),
+            doc_code_collector: DocCodeGetterCollector::<TSGetterCallCollector>::new(
+                path,
+                &getter_collection,
+            ),
             path,
             scope_stack: Vec::new(),
         };
@@ -34,7 +39,7 @@ impl<'path> GetterVisitor for GetterCallVisitor<'path> {
     }
 }
 
-impl<'path> GetterCallVisitor<'path> {
+impl<'path> STGetterCallCollector<'path> {
     fn process_method_call(&mut self, method_call: &syn::ExprMethodCall) {
         use NonGetterReason::*;
 
@@ -110,7 +115,7 @@ impl<'path> GetterCallVisitor<'path> {
     }
 }
 
-impl<'ast, 'path> Visit<'ast> for GetterCallVisitor<'path> {
+impl<'ast, 'path> Visit<'ast> for STGetterCallCollector<'path> {
     fn visit_item(&mut self, node: &'ast syn::Item) {
         self.push_scope(node);
         visit::visit_item(self, node);
@@ -129,7 +134,7 @@ impl<'ast, 'path> Visit<'ast> for GetterCallVisitor<'path> {
 
     fn visit_macro(&mut self, node: &'ast syn::Macro) {
         self.push_scope(node);
-        TSGetterCallParser::parse(
+        TSGetterCallCollector::collect(
             self.path,
             &self.scope(),
             &node.tokens,
@@ -140,6 +145,6 @@ impl<'ast, 'path> Visit<'ast> for GetterCallVisitor<'path> {
 
     fn visit_attribute(&mut self, node: &'ast syn::Attribute) {
         // Each doc line is passed as an attribute
-        self.doc_code_parser.have_attribute(node);
+        self.doc_code_collector.have_attribute(node);
     }
 }

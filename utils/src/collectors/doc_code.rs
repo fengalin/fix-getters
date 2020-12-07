@@ -1,20 +1,27 @@
-//! A generic documentation code [`Getter`](crate::Getter) parser.
+//! A generic [`Getter`](crate::Getter)s collector visting documentation.
 
 use std::path::{Path, PathBuf};
 
-use crate::{GetterCollection, Scope, TokenStreamParser};
+use crate::{GetterCollection, Scope, TokenStreamGetterCollector};
 
-/// A generic documentation code [`Getter`](crate::Getter) parser.
+/// A generic [`Getter`](crate::Getter)s collector visting documentation.
+///
+/// When parsing Rust code with [`syn`], documentation lines are
+/// passed as [`Attribute`](syn::Attribute)s, one line at a time.
+/// The generic [`DocCodeGetterCollector`] allows gathering the
+/// documentation code lines together and collecting the
+/// [`Getter`](crate::Getter)s using the provided
+/// [`TokenStreamGetterCollector`](super::TokenStreamGetterCollector).
 #[derive(Debug)]
-pub struct DocCodeParser<P: TokenStreamParser> {
+pub struct DocCodeGetterCollector<P: TokenStreamGetterCollector> {
     code: String,
     state: State,
     getter_collection: P::GetterCollection,
     path: PathBuf,
 }
 
-impl<P: TokenStreamParser> DocCodeParser<P> {
-    /// Builds a [`DocCodeParser`].
+impl<P: TokenStreamGetterCollector> DocCodeGetterCollector<P> {
+    /// Builds a [`DocCodeGetterCollector`].
     ///
     /// [`Getter`](crate::Getter)s will be added to the provided [`GetterCollection`].
     /// Documentation alias attributes will be discarded.
@@ -22,7 +29,7 @@ impl<P: TokenStreamParser> DocCodeParser<P> {
         let mut getter_collection = P::GetterCollection::clone(getter_collection);
         getter_collection.disable_doc_alias();
 
-        DocCodeParser {
+        DocCodeGetterCollector {
             code: String::with_capacity(512),
             state: State::None,
             getter_collection,
@@ -34,7 +41,7 @@ impl<P: TokenStreamParser> DocCodeParser<P> {
     ///
     /// Note that documentation code is parsed by [`syn`] one line at a time,
     /// this method will take care of parsing any code found in the provided
-    /// [`Attribute`](syn::Attribute)s and feed the [`GetterCollection`].
+    /// [`Attribute`](syn::Attribute)s and feeding the [`GetterCollection`].
     pub fn have_attribute(&mut self, node: &syn::Attribute) {
         if let Some((_, cursor)) = syn::buffer::TokenBuffer::new2(node.tokens.clone())
             .begin()
@@ -62,7 +69,7 @@ impl<P: TokenStreamParser> DocCodeParser<P> {
             } else {
                 // terminating a doc code block
                 if self.state.is_rust() {
-                    self.parse();
+                    self.collect();
                 }
                 self.state = State::None;
             }
@@ -72,9 +79,9 @@ impl<P: TokenStreamParser> DocCodeParser<P> {
         }
     }
 
-    fn parse(&mut self) {
+    fn collect(&mut self) {
         match syn::parse_str::<proc_macro2::TokenStream>(&self.code) {
-            Ok(syntax_tree) => P::parse(
+            Ok(syntax_tree) => P::collect(
                 &self.path,
                 &Scope::Documentation,
                 &syntax_tree,

@@ -1,17 +1,27 @@
-//! A [`TokenStream`](proc_macro2::TokenStream) parser `trait`.
+//! A [`Getter`](crate::Getter)s collector visting a [`TokenStream`](proc_macro2::TokenStream).
 
 use std::path::Path;
 
-/// A [`TokenStream`](proc_macro2::TokenStream) parser `trait`.
 use crate::{GetterCollection, Scope};
 
-pub trait TokenStreamParser {
+/// A [`Getter`](crate::Getter)s collector visting a [`TokenStream`](proc_macro2::TokenStream).
+///
+/// A [`TokenStream`](proc_macro2::TokenStream) is provided by [`syn`] when a macro
+/// or is encountered.
+///
+/// This is also useful to parse documentation, once the different lines of the documentation
+/// and the code it contains is gethered together. Use a [`DocCodeGetterCollector`](super::DocCodeGetterCollector)
+/// for that.
+///
+/// For regular Rust code, it is easier to work on a [`SyntaxTree`](syn::File) using
+/// a [`SyntaxTreeGetterCollector`](crate::SyntaxTreeGetterCollector).
+pub trait TokenStreamGetterCollector {
     /// Type for the [`GetterCollection`] used by this [`TokenStreamParser`].
     type GetterCollection: GetterCollection;
 
-    /// Parses the `stream` collecting [`Getter`](crate::Getter)s
+    /// Parses the [`TokenStream`](proc_macro2::TokenStream) collecting [`Getter`](crate::Getter)s
     /// in the [`GetterCollection`].
-    fn parse(
+    fn collect(
         path: &Path,
         scope: &Scope,
         stream: &proc_macro2::TokenStream,

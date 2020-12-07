@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use utils::{parser::prelude::*, Error, ParseFileError};
 
-use crate::{GetterDefCollection, GetterDefVisitor};
+use crate::{GetterDefCollection, STGetterDefCollector};
 
 /// Fixes the file at the given path.
 ///
@@ -24,7 +24,7 @@ pub fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Error> {
     };
 
     let getter_collection = GetterDefCollection::default();
-    GetterDefVisitor::visit(&path, &syntax_tree, &getter_collection);
+    STGetterDefCollector::collect(&path, &syntax_tree, &getter_collection);
 
     let output_path = match output_path {
         Some(output_path) => output_path,

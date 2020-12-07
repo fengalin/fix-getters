@@ -1,4 +1,5 @@
-//! Macro parser in search of renamable getter calls.
+//! A [`TokenStreamGetterCollector`](utils::TokenStreamGetterCollector) collecting
+//! renamable [`Getter`](utils::Getter) calls.
 
 use log::trace;
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
@@ -10,24 +11,26 @@ use utils::{getter, parser::prelude::*, Getter, NonGetterReason, Scope};
 
 use crate::GetterCallCollection;
 
+/// A [`TokenStreamGetterCollector`](utils::TokenStreamGetterCollector) collecting
+/// renamable [`Getter`](utils::Getter) calls.
 #[derive(Debug)]
-pub struct TSGetterCallParser<'scope> {
+pub struct TSGetterCallCollector<'scope> {
     state: State,
     getter_collection: GetterCallCollection,
     path: &'scope Path,
     scope: &'scope Scope,
 }
 
-impl<'scope> TokenStreamParser for TSGetterCallParser<'scope> {
+impl<'scope> TokenStreamGetterCollector for TSGetterCallCollector<'scope> {
     type GetterCollection = GetterCallCollection;
 
-    fn parse(
+    fn collect(
         path: &Path,
         scope: &Scope,
         stream: &TokenStream,
         getter_collection: &GetterCallCollection,
     ) {
-        let mut parser = TSGetterCallParser {
+        let mut parser = TSGetterCallCollector {
             state: State::default(),
             getter_collection: GetterCallCollection::clone(getter_collection),
             path,
@@ -38,7 +41,7 @@ impl<'scope> TokenStreamParser for TSGetterCallParser<'scope> {
     }
 }
 
-impl<'scope> TSGetterCallParser<'scope> {
+impl<'scope> TSGetterCallCollector<'scope> {
     fn parse_(&mut self, mut rest: Cursor) {
         while let Some((tt, next)) = rest.token_tree() {
             // Find patterns `.get_suffix()`
@@ -191,7 +194,7 @@ impl<'scope> TSGetterCallParser<'scope> {
                 if is_method {
                     err.log(self.scope);
                 }
-                return State::None;
+                State::None
             }
         }
     }

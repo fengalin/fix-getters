@@ -1,9 +1,6 @@
 mod fix;
 use fix::fix;
 
-mod getter_call;
-pub use getter_call::GetterCallCollection;
-
 mod collectors;
 pub use collectors::*;
 

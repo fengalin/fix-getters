@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use utils::{parser::prelude::*, Error, ParseFileError};
 
-use crate::{GetterCallCollection, GetterCallVisitor};
+use crate::{GetterCallCollection, STGetterCallCollector};
 
 /// Fixes the file at the given path.
 ///
@@ -25,7 +25,7 @@ pub fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Error> {
     };
 
     let getter_collection = GetterCallCollection::default();
-    GetterCallVisitor::visit(path, &syntax_tree, &getter_collection);
+    STGetterCallCollector::collect(path, &syntax_tree, &getter_collection);
 
     let output_path = match output_path {
         Some(output_path) => output_path,
@@ -45,9 +45,8 @@ pub fn fix(path: &Path, output_path: &Option<PathBuf>) -> Result<(), Error> {
         if let Some(getter_calls) = getter_collection.get(line_idx) {
             let mut line = Cow::from(line);
             for getter_call in getter_calls {
-                let origin = format!("{}", getter_call.name);
-                let target = format!("{}", getter_call.new_name.as_str());
-                line = Cow::from(line.replacen(&origin, &target, 1));
+                line =
+                    Cow::from(line.replacen(&getter_call.name, getter_call.new_name.as_str(), 1));
             }
             writer
                 .write(line.as_bytes())

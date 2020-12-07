@@ -21,6 +21,8 @@ pub use scope::Scope;
 
 pub mod parser {
     pub mod prelude {
-        pub use super::super::{GetterCollection, GetterVisitor, TokenStreamParser};
+        pub use super::super::{
+            GetterCollection, SyntaxTreeGetterCollector, TokenStreamGetterCollector,
+        };
     }
 }
