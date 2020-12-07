@@ -1,3 +1,5 @@
+//! [`Getter`](utils::Getter) definitions collection implementations.
+
 pub mod collection;
 pub use collection::GetterDefCollection;
 

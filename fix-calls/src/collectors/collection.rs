@@ -1,9 +1,11 @@
+//! A collection of [`Getter`](utils::Getter) call sites.
+
 use rules::ReturnsBool;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use utils::{parser::prelude::*, Getter, GetterError};
 
 #[derive(Debug)]
-pub struct GetterCallCollectionInner(HashMap<usize, Vec<Getter>>);
+struct GetterCallCollectionInner(HashMap<usize, Vec<Getter>>);
 
 impl Default for GetterCallCollectionInner {
     fn default() -> Self {
@@ -11,6 +13,10 @@ impl Default for GetterCallCollectionInner {
     }
 }
 
+/// A collection of [`Getter`](utils::Getter) call sites.
+///
+/// Manages [`Getter`](utils::Getter) call sites which were considered
+/// eligibles to be renamed.
 #[derive(Debug, Default)]
 pub struct GetterCallCollection {
     inner: Rc<RefCell<GetterCallCollectionInner>>,

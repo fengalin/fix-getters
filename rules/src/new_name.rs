@@ -51,8 +51,8 @@ impl NewName {
     /// Returns whether renaming used the regular strategy.
     ///
     /// Ex.:
-    // * `get_name` -> `name`.
-    // * `get_active` -> `is_active`.
+    /// * `get_name` -> `name`.
+    /// * `get_active` -> `is_active`.
     pub fn is_regular(&self) -> bool {
         self.rule.is_regular()
     }
@@ -60,7 +60,7 @@ impl NewName {
     /// Returns whether renaming didn't use the `is` prefix for `bool` getter.
     ///
     /// Ex.:
-    // * `get_has_entry` -> `has_entry`.
+    /// * `get_has_entry` -> `has_entry`.
     pub fn is_no_prefix(&self) -> bool {
         self.rule.is_no_prefix()
     }
@@ -110,8 +110,8 @@ impl NewNameRule {
     /// Returns whether renaming used the regular strategy.
     ///
     /// Ex.:
-    // * `get_name` -> `name`.
-    // * `get_active` -> `is_active`.
+    /// * `get_name` -> `name`.
+    /// * `get_active` -> `is_active`.
     pub fn is_regular(&self) -> bool {
         matches!(self, NewNameRule::Regular)
     }
@@ -119,7 +119,7 @@ impl NewNameRule {
     /// Returns whether renaming didn't use the `is` prefix for `bool` getter.
     ///
     /// Ex.:
-    // * `get_has_entry` -> `has_entry`.
+    /// * `get_has_entry` -> `has_entry`.
     pub fn is_no_prefix(&self) -> bool {
         matches!(self, NewNameRule::NoPrefix)
     }
@@ -137,7 +137,7 @@ impl Display for NewNameRule {
     }
 }
 
-/// Indicates current knowledge of the get function returning exaclty one `bool`.
+/// Indicates current knowledge about the getter returning exaclty one `bool`.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ReturnsBool {
     True,

@@ -1,3 +1,5 @@
+//! A [`Getter`](utils::Getter) definition.
+
 use rules::{NewName, ReturnsBool};
 use std::{
     fmt::{self, Display},
@@ -5,6 +7,7 @@ use std::{
 };
 use utils::{Getter, GetterError};
 
+/// A [`Getter`](utils::Getter) definition.
 #[derive(Debug)]
 pub struct GetterDef {
     getter: Getter,

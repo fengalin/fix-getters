@@ -1,3 +1,5 @@
+//! Generic [`Getter`](crate::Getter) collection definitions and implementations.
+
 pub mod collection;
 pub use collection::GetterCollection;
 

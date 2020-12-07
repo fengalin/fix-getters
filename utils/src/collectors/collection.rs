@@ -12,8 +12,9 @@
 /// `macro`s. However, the code appears at a particular `offset` in the
 /// actual Rust file.
 ///
-/// See also [`TokenStreamParser`](crate::TokenStreamParser),
-/// [`GetterVisitor`](crate::GetterVisitor) and [`DocCodeParser`](crate::DocCodeParser).
+/// See also [`TokenStreamGetterCollector`](crate::TokenStreamGetterCollector),
+/// [`SyntaxTreeGetterCollector`](crate::SyntaxTreeGetterCollector) and
+/// [`DocCodeGetterCollector`](crate::DocCodeGetterCollector).
 pub trait GetterCollection {
     /// Clones a view on the provided shared collection.
     ///

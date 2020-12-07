@@ -1,3 +1,5 @@
+//! A collection of [`GetterDef`](crate::GetterDef)s.
+
 use rules::ReturnsBool;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use utils::{parser::prelude::*, GetterError};
@@ -5,7 +7,7 @@ use utils::{parser::prelude::*, GetterError};
 use crate::GetterDef;
 
 #[derive(Debug)]
-pub struct GetterDefCollectionInner(HashMap<usize, GetterDef>);
+struct GetterDefCollectionInner(HashMap<usize, GetterDef>);
 
 impl Default for GetterDefCollectionInner {
     fn default() -> Self {
@@ -13,6 +15,10 @@ impl Default for GetterDefCollectionInner {
     }
 }
 
+/// A collection of [`GetterDef`](crate::GetterDef)s.
+///
+/// Manages [`GetterDef`](crate::GetterDef)s which were considered
+/// eligibles to be renamed.
 #[derive(Debug, Default)]
 pub struct GetterDefCollection {
     inner: Rc<RefCell<GetterDefCollectionInner>>,

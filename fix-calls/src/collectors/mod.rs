@@ -1,3 +1,5 @@
+//! [`Getter`](utils::Getter) call sites collection implementations.
+
 pub mod collection;
 pub use collection::GetterCallCollection;
 

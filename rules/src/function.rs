@@ -60,7 +60,86 @@ pub static RESERVED: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     reserved
 });
 
-/// Subsitutes of `bool` getter to be used when the suffixes matches exactly.
+/// Substitutes for tokens of getters returning a `bool`.
+///
+/// The convention is to rename `bool` getters `get_suffix` as `is_suffix`,
+/// but there are cases for which we want a better name:
+///
+/// - `get_mute` -> `is_muted`.
+/// - `get_emit_eos` -> `emits_eos`.
+pub static BOOL_FIRST_TOKEN_SUBSTITUTES: Lazy<HashMap<&'static str, &'static str>> =
+    Lazy::new(|| {
+        let mut first_token_subs = HashMap::new();
+        first_token_subs.insert("activate", "activates");
+        first_token_subs.insert("accept", "accepts");
+        first_token_subs.insert("allow", "allows");
+        // Ex.: `get_always_show_image` -> `must_always_show_image`.
+        first_token_subs.insert("always", "must_always");
+        first_token_subs.insert("close", "closes");
+        first_token_subs.insert("create", "creates");
+        // Ex.: `get_destroy_with_parent` -> `must_destroy_with_parent`.
+        first_token_subs.insert("destroy", "must_destroy");
+        first_token_subs.insert("do", "does");
+        first_token_subs.insert("draw", "draws");
+        first_token_subs.insert("embed", "embeds");
+        first_token_subs.insert("emit", "emits");
+        first_token_subs.insert("enable", "enables");
+        first_token_subs.insert("exit", "exits");
+        first_token_subs.insert("expand", "expands");
+        first_token_subs.insert("fill", "fills");
+        first_token_subs.insert("fit", "fits");
+        // Ex.: `get_focus_on_map` -> `gets_focus_on_map`.
+        first_token_subs.insert("focus", "gets_focus");
+        first_token_subs.insert("follow", "follows");
+        first_token_subs.insert("hide", "hides");
+        first_token_subs.insert("ignore", "ignores");
+        first_token_subs.insert("invert", "inverts");
+        first_token_subs.insert("mute", "is_muted");
+        first_token_subs.insert("propagate", "propagates");
+        first_token_subs.insert("populate", "populates");
+        first_token_subs.insert("receive", "receives");
+        first_token_subs.insert("reset", "resets");
+        first_token_subs.insert("require", "requires");
+        // Ex.: `get_reserve_indicator` -> `must_reserve_indicator`.
+        first_token_subs.insert("reserve", "must_reserve");
+        first_token_subs.insert("resize", "resizes");
+        first_token_subs.insert("restrict", "restricts");
+        first_token_subs.insert("reveal", "reveals");
+        first_token_subs.insert("select", "selects");
+        first_token_subs.insert("show", "shows");
+        first_token_subs.insert("skip", "skips");
+        first_token_subs.insert("snap", "snaps");
+        first_token_subs.insert("support", "supports");
+        first_token_subs.insert("take", "takes");
+        first_token_subs.insert("track", "tracks");
+        // Ex.: `get_truncate_multiline` -> `must_truncate_multiline`.
+        first_token_subs.insert("truncate", "must_truncate");
+        first_token_subs.insert("use", "uses");
+        first_token_subs.insert("wrap", "wraps");
+        first_token_subs
+    });
+
+/// Set of `bool` getter suffix first tokens for which no be prefix should be applied.
+///
+/// The convention is to rename `bool` getters `get_suffix` as `is_suffix`,
+/// but there are cases for which the meaning makes it useless to add the `is` prefix:
+///
+/// - `get_has_entry` -> `has_entry`.
+pub static BOOL_FIRST_TOKEN_NO_PREFIX: Lazy<HashSet<&'static str>> = Lazy::new(|| {
+    let mut first_tokens = HashSet::new();
+    first_tokens.insert("can");
+    first_tokens.insert("has");
+    first_tokens.insert("must");
+    first_tokens.insert("should");
+    first_tokens.insert("state");
+    // Also add all the prefix substitutes (e.g. accepts, skips, ...)
+    for bool_substitute in BOOL_FIRST_TOKEN_SUBSTITUTES.values() {
+        first_tokens.insert(bool_substitute);
+    }
+    first_tokens
+});
+
+/// Substitutes of `bool` getter to be used when the suffixes matches exactly.
 ///
 /// The convention is to rename `bool` getters `get_suffix` as `is_suffix`,
 /// but there are cases for which it would be confusing to add the `is` prefix:
@@ -69,89 +148,11 @@ pub static RESERVED: Lazy<HashSet<&'static str>> = Lazy::new(|| {
 /// - `get_overwrite` -> `overwrites`. Note that if the getter suffix doesn't match
 ///   exactly, this rule doesn't apply. Ex. `get_overwrite_mode` -> `is_overwrites_mode`
 pub static BOOL_EXACT_SUBSTITUTES: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
-    let mut exact_substitutes = HashMap::new();
-    exact_substitutes.insert("result", "result");
-    exact_substitutes.insert("overwrite", "overwrites");
-    exact_substitutes.insert("visibility", "is_visible");
-    exact_substitutes
-});
-
-/// Substitutes for getters returning a `bool`.
-///
-/// The convention is to rename `bool` getters `get_suffix` as `is_suffix`,
-/// but there are cases for which we want a better name:
-///
-/// - `get_mute` -> `is_muted`.
-/// - `get_emit_eos` -> `emits_eos`.
-pub static BOOL_PREFIX_SUBSTITUTES: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
-    let mut prefix_substitutes = HashMap::new();
-    prefix_substitutes.insert("activate", "activates");
-    prefix_substitutes.insert("accept", "accepts");
-    prefix_substitutes.insert("allow", "allows");
-    // Ex.: `get_always_show_image` -> `must_always_show_image`.
-    prefix_substitutes.insert("always", "must_always");
-    prefix_substitutes.insert("close", "closes");
-    prefix_substitutes.insert("create", "creates");
-    // Ex.: `get_destroy_with_parent` -> `must_destroy_with_parent`.
-    prefix_substitutes.insert("destroy", "must_destroy");
-    prefix_substitutes.insert("do", "does");
-    prefix_substitutes.insert("draw", "draws");
-    prefix_substitutes.insert("embed", "embeds");
-    prefix_substitutes.insert("emit", "emits");
-    prefix_substitutes.insert("enable", "enables");
-    prefix_substitutes.insert("exit", "exits");
-    prefix_substitutes.insert("expand", "expands");
-    prefix_substitutes.insert("fill", "fills");
-    prefix_substitutes.insert("fit", "fits");
-    // Ex.: `get_focus_on_map` -> `gets_focus_on_map`.
-    prefix_substitutes.insert("focus", "gets_focus");
-    prefix_substitutes.insert("follow", "follows");
-    prefix_substitutes.insert("hide", "hides");
-    prefix_substitutes.insert("ignore", "ignores");
-    prefix_substitutes.insert("invert", "inverts");
-    prefix_substitutes.insert("mute", "is_muted");
-    prefix_substitutes.insert("propagate", "propagates");
-    prefix_substitutes.insert("populate", "populates");
-    prefix_substitutes.insert("receive", "receives");
-    prefix_substitutes.insert("reset", "resets");
-    prefix_substitutes.insert("require", "requires");
-    // Ex.: `get_reserve_indicator` -> `must_reserve_indicator`.
-    prefix_substitutes.insert("reserve", "must_reserve");
-    prefix_substitutes.insert("resize", "resizes");
-    prefix_substitutes.insert("restrict", "restricts");
-    prefix_substitutes.insert("reveal", "reveals");
-    prefix_substitutes.insert("select", "selects");
-    prefix_substitutes.insert("show", "shows");
-    prefix_substitutes.insert("skip", "skips");
-    prefix_substitutes.insert("snap", "snaps");
-    prefix_substitutes.insert("support", "supports");
-    prefix_substitutes.insert("take", "takes");
-    prefix_substitutes.insert("track", "tracks");
-    // Ex.: `get_truncate_multiline` -> `must_truncate_multiline`.
-    prefix_substitutes.insert("truncate", "must_truncate");
-    prefix_substitutes.insert("use", "uses");
-    prefix_substitutes.insert("wrap", "wraps");
-    prefix_substitutes
-});
-
-/// Set of `bool` getter suffix prefixes which must not be prefixed with `is`.
-///
-/// The convention is to rename `bool` getters `get_suffix` as `is_suffix`,
-/// but there are cases for which the meaning makes it useless to add the `is` prefix:
-///
-/// - `get_has_entry` -> `has_entry`.
-pub static BOOL_STARTS_WITH_NO_PREFIX: Lazy<HashSet<&'static str>> = Lazy::new(|| {
-    let mut bool_as_regular = HashSet::new();
-    bool_as_regular.insert("can");
-    bool_as_regular.insert("has");
-    bool_as_regular.insert("must");
-    bool_as_regular.insert("should");
-    bool_as_regular.insert("state");
-    // Also add all the prefix substitutes (e.g. accepts, skips, ...)
-    for bool_substitute in BOOL_PREFIX_SUBSTITUTES.values() {
-        bool_as_regular.insert(bool_substitute);
-    }
-    bool_as_regular
+    let mut exact_subs = HashMap::new();
+    exact_subs.insert("result", "result");
+    exact_subs.insert("overwrite", "overwrites");
+    exact_subs.insert("visibility", "is_visible");
+    exact_subs
 });
 
 /// Special suffix to detect getters returning a `bool`.
@@ -252,8 +253,8 @@ pub fn rename_bool_getter(suffix: &str) -> NewName {
 
 /// Attempts to apply special rules to the `bool` getter.
 ///
-/// The substitutions are defined in [`BOOL_PREFIX_SUBSTITUTES`]
-/// and [`BOOL_STARTS_WITH_NO_PREFIX`].
+/// The substitutions are defined in [`BOOL_FIRST_TOKEN_SUBSTITUTES`]
+/// and [`BOOL_FIRST_TOKEN_NO_PREFIX`].
 #[inline]
 fn try_rename_bool_getter(suffix: &str) -> Option<NewName> {
     let mut working_suffix = suffix;
@@ -265,7 +266,7 @@ fn try_rename_bool_getter(suffix: &str) -> Option<NewName> {
     }
 
     let splits: Vec<&str> = working_suffix.splitn(2, '_').collect();
-    BOOL_PREFIX_SUBSTITUTES
+    BOOL_FIRST_TOKEN_SUBSTITUTES
         .get(splits[0])
         .map(|substitute| {
             if splits.len() == 1 {
@@ -283,7 +284,7 @@ fn try_rename_bool_getter(suffix: &str) -> Option<NewName> {
             }
         })
         .or_else(|| {
-            BOOL_STARTS_WITH_NO_PREFIX.get(splits[0]).map(|_| {
+            BOOL_FIRST_TOKEN_NO_PREFIX.get(splits[0]).map(|_| {
                 if splits.len() == 1 {
                     NewName {
                         new_name: splits[0].to_string(),
@@ -316,7 +317,7 @@ fn try_rename_bool_getter(suffix: &str) -> Option<NewName> {
 
 /// Attempts to determine whether the getter returns a `bool` from its name.
 ///
-/// Uses [`BOOL_PREFIX_SUBSTITUTES`], [`BOOL_STARTS_WITH_NO_PREFIX`] and
+/// Uses [`BOOL_FIRST_TOKEN_SUBSTITUTES`], [`BOOL_FIRST_TOKEN_NO_PREFIX`] and
 /// [`BOOL_ABLE_PREFIX`] as a best effort estimation.
 ///
 /// Returns the name substitute if `self` seems to be returning a `bool`.

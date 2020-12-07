@@ -14,9 +14,9 @@ use crate::{GetterCollection, Scope};
 /// for that.
 ///
 /// For regular Rust code, it is easier to work on a [`SyntaxTree`](syn::File) using
-/// a [`SyntaxTreeGetterCollector`](crate::SyntaxTreeGetterCollector).
+/// a [`SyntaxTreeGetterCollector`](crate::DocCodeGetterCollector).
 pub trait TokenStreamGetterCollector {
-    /// Type for the [`GetterCollection`] used by this [`TokenStreamParser`].
+    /// Type for the [`GetterCollection`] used by this [`TokenStreamGetterCollector`].
     type GetterCollection: GetterCollection;
 
     /// Parses the [`TokenStream`](proc_macro2::TokenStream) collecting [`Getter`](crate::Getter)s
