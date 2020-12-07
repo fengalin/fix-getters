@@ -7,6 +7,8 @@ use std::{
     fmt::{self, Display},
 };
 
+use crate::{NewName, NewNameRule, ReturnsBool};
+
 /// Getters reserved suffix list.
 ///
 /// Getter that we don't want to rename because
@@ -210,16 +212,18 @@ pub fn try_rename_getter_suffix(
 
     let splits: Vec<&str> = suffix.splitn(2, '_').collect();
     if splits.len() > 1 && PREFIX_TO_POSTFIX.contains(splits[0]) {
-        Ok(NewName::Fixed {
+        Ok(NewName {
             new_name: format!("{}_{}", splits[1], splits[0]),
             returns_bool,
+            rule: NewNameRule::Fixed,
         })
     } else if RESERVED.contains(suffix) {
         Err(RenameError::Reserved)
     } else {
-        Ok(NewName::Regular {
+        Ok(NewName {
             new_name: suffix.to_string(),
             returns_bool,
+            rule: NewNameRule::Regular,
         })
     }
 }
@@ -228,18 +232,20 @@ pub fn try_rename_getter_suffix(
 #[inline]
 pub fn rename_bool_getter(suffix: &str) -> NewName {
     if let Some(substitute) = BOOL_EXACT_SUBSTITUTES.get(suffix) {
-        return NewName::Substituted {
+        return NewName {
             new_name: substitute.to_string(),
             returns_bool: true.into(),
+            rule: NewNameRule::Substituted,
         };
     }
 
     if let Some(new_name) = try_rename_bool_getter(suffix) {
         new_name
     } else {
-        NewName::Regular {
+        NewName {
             new_name: format!("is_{}", suffix),
             returns_bool: true.into(),
+            rule: NewNameRule::Regular,
         }
     }
 }
@@ -263,28 +269,32 @@ fn try_rename_bool_getter(suffix: &str) -> Option<NewName> {
         .get(splits[0])
         .map(|substitute| {
             if splits.len() == 1 {
-                NewName::Substituted {
+                NewName {
                     new_name: substitute.to_string(),
                     returns_bool: true.into(),
+                    rule: NewNameRule::Substituted,
                 }
             } else {
-                NewName::Substituted {
+                NewName {
                     new_name: format!("{}_{}", substitute, splits[1]),
                     returns_bool: true.into(),
+                    rule: NewNameRule::Substituted,
                 }
             }
         })
         .or_else(|| {
             BOOL_STARTS_WITH_NO_PREFIX.get(splits[0]).map(|_| {
                 if splits.len() == 1 {
-                    NewName::NoPrefix {
+                    NewName {
                         new_name: splits[0].to_string(),
                         returns_bool: true.into(),
+                        rule: NewNameRule::NoPrefix,
                     }
                 } else {
-                    NewName::NoPrefix {
+                    NewName {
                         new_name: format!("{}_{}", splits[0], splits[1]),
                         returns_bool: true.into(),
+                        rule: NewNameRule::NoPrefix,
                     }
                 }
             })
@@ -293,9 +303,10 @@ fn try_rename_bool_getter(suffix: &str) -> Option<NewName> {
             // No bool rules applied to the working suffix
             if has_is_prefix {
                 // but the suffix was already `is` prefixed
-                Some(NewName::Regular {
+                Some(NewName {
                     new_name: suffix.to_string(),
                     returns_bool: true.into(),
+                    rule: NewNameRule::Regular,
                 })
             } else {
                 None
@@ -317,188 +328,13 @@ pub fn guesstimate_boolness_then_rename(suffix: &str) -> Option<NewName> {
 
     let splits: Vec<&str> = suffix.splitn(2, '_').collect();
     if splits[0].ends_with(BOOL_ABLE_PREFIX) {
-        Some(NewName::Regular {
+        Some(NewName {
             new_name: format!("is_{}", suffix),
             returns_bool: true.into(),
+            rule: NewNameRule::Regular,
         })
     } else {
         None
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum ReturnsBool {
-    True,
-    False,
-    Maybe,
-}
-
-impl ReturnsBool {
-    pub fn is_true(&self) -> bool {
-        matches!(self, ReturnsBool::True)
-    }
-
-    pub fn is_false(&self) -> bool {
-        matches!(self, ReturnsBool::False)
-    }
-
-    pub fn is_maybe(&self) -> bool {
-        matches!(self, ReturnsBool::Maybe)
-    }
-}
-
-impl From<bool> for ReturnsBool {
-    fn from(returns_bool: bool) -> Self {
-        if returns_bool {
-            ReturnsBool::True
-        } else {
-            ReturnsBool::False
-        }
-    }
-}
-
-impl Display for ReturnsBool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        use ReturnsBool::*;
-        match self {
-            False => Ok(()),
-            True => f.write_str("-> bool "),
-            Maybe => f.write_str("-> ? "),
-        }
-    }
-}
-
-/// Would-be-getter rename attempt sucessful result.
-///
-/// Holds details about what happened.
-#[derive(Debug, PartialEq)]
-#[non_exhaustive]
-pub enum NewName {
-    /// Fixed name to comply to rules. Ex. `get_mut_structure` -> `structure_mut`.
-    Fixed {
-        new_name: String,
-        returns_bool: ReturnsBool,
-    },
-    /// Regular rule: removal of the prefix or replacement with `is`.
-    Regular {
-        new_name: String,
-        returns_bool: ReturnsBool,
-    },
-    /// No prefix for `bool` getter. Ex. `get_has_entry` -> `has_entry`.
-    NoPrefix {
-        new_name: String,
-        returns_bool: ReturnsBool,
-    },
-    /// Applied substitution. Ex. `get_mute` -> `is_muted`.
-    Substituted {
-        new_name: String,
-        returns_bool: ReturnsBool,
-    },
-}
-
-impl NewName {
-    /// Returns the new name.
-    pub fn as_str(&self) -> &str {
-        use NewName::*;
-        match self {
-            Fixed { new_name, .. }
-            | Substituted { new_name, .. }
-            | Regular { new_name, .. }
-            | NoPrefix { new_name, .. } => new_name.as_str(),
-        }
-    }
-
-    /// Consumes the [`NewName`] and returns the inner new name [`String`].
-    pub fn into_string(self) -> String {
-        use NewName::*;
-        match self {
-            Fixed { new_name, .. }
-            | Substituted { new_name, .. }
-            | Regular { new_name, .. }
-            | NoPrefix { new_name, .. } => new_name,
-        }
-    }
-
-    /// Returns the boolness.
-    pub fn returns_bool(&self) -> ReturnsBool {
-        use NewName::*;
-        match self {
-            Fixed { returns_bool, .. }
-            | Substituted { returns_bool, .. }
-            | Regular { returns_bool, .. }
-            | NoPrefix { returns_bool, .. } => *returns_bool,
-        }
-    }
-
-    pub fn set_returns_bool(&mut self, new_returns_bool: impl Into<ReturnsBool>) {
-        use NewName::*;
-        match self {
-            Fixed { returns_bool, .. }
-            | Substituted { returns_bool, .. }
-            | Regular { returns_bool, .. }
-            | NoPrefix { returns_bool, .. } => *returns_bool = new_returns_bool.into(),
-        }
-    }
-
-    /// Returns whether renaming required fixing the name to comply with rules.
-    ///
-    /// Ex. `get_mut_structure` -> `structure_mut`.
-    pub fn is_fixed(&self) -> bool {
-        matches!(self, NewName::Fixed{ .. })
-    }
-
-    /// Returns whether renaming required substituing (part) of the name.
-    ///
-    /// Ex. `get_mute` -> `is_muted`.
-    pub fn is_substituted(&self) -> bool {
-        matches!(self, NewName::Substituted{ .. })
-    }
-
-    /// Returns whether renaming used the regular strategy.
-    ///
-    /// Ex.:
-    // * `get_name` -> `name`.
-    // * `get_active` -> `is_active`.
-    pub fn is_regular(&self) -> bool {
-        matches!(self, NewName::Regular{ .. })
-    }
-
-    /// Returns whether renaming didn't use the `is` prefix for `bool` getter.
-    ///
-    /// Ex.:
-    // * `get_has_entry` -> `has_entry`.
-    pub fn is_no_prefix(&self) -> bool {
-        matches!(self, NewName::NoPrefix{ .. })
-    }
-}
-
-impl Display for NewName {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        use NewName::*;
-        match self {
-            Fixed {
-                new_name,
-                returns_bool,
-            } => write!(f, "{}fixed as {}", returns_bool, new_name),
-            Substituted {
-                new_name,
-                returns_bool,
-            } => write!(f, "{}substituted with {}", returns_bool, new_name),
-            NoPrefix {
-                new_name,
-                returns_bool,
-            } => write!(f, "{}kept as {}", returns_bool, new_name),
-            Regular {
-                new_name,
-                returns_bool,
-            } => write!(f, "{}renamed as {}", returns_bool, new_name),
-        }
-    }
-}
-
-impl<T: AsRef<str>> PartialEq<T> for NewName {
-    fn eq(&self, other: &T) -> bool {
-        self.as_str() == other.as_ref()
     }
 }
 

@@ -8,6 +8,7 @@
 pub mod dir_entry;
 
 pub mod function;
-pub use function::{
-    try_rename_getter_suffix, try_rename_would_be_getter, NewName, RenameError, ReturnsBool,
-};
+pub use function::{try_rename_getter_suffix, try_rename_would_be_getter, RenameError};
+
+pub mod new_name;
+pub use new_name::{NewName, NewNameRule, ReturnsBool};
