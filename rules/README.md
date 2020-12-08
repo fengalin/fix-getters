@@ -15,8 +15,8 @@ The `rules` apply to:
 
 ## Features
 
-* **`fs`** — File system traversal helper. This features is enabled by default.
-  Use `default-features = false` if your use case differs.
+* **`dir-entry`** — directory entry filtering rules. This features is enabled by
+  default. Use `default-features = false` if your use case differs.
 
 ## Function rules
 
@@ -29,7 +29,7 @@ The initial intent is to comply with Rust [naming conventions for getter methods
 These rules are based on the function name and knowledge of the return type.
 See next chapter for `get` functions returning exactly one `bool`.
 
-A `get` function is considered eligible for `get_` prefix removal if:
+A `get` function is considered eligible for `get` prefix removal if:
 
 * The function starts with `get_`.
 * The suffix is not a Rust keyword, which would result in invalid code.

@@ -7,7 +7,7 @@ use std::path::Path;
 use syn::buffer::{Cursor, TokenBuffer};
 
 use rules::ReturnsBool;
-use utils::{getter, parser::prelude::*, NonGetterReason, Scope};
+use utils::{getter, prelude::*, NonGetterReason, Scope};
 
 use crate::{GetterDef, GetterDefCollection};
 

@@ -8,7 +8,8 @@ pub mod error;
 pub use error::Error;
 pub use error::ParseFileError;
 
-pub mod fs;
+pub mod crate_traverser;
+pub use crate_traverser::CrateTraverser;
 
 pub mod getter;
 pub use getter::{Getter, GetterError, NonGetterReason};
@@ -19,10 +20,8 @@ pub use collectors::*;
 pub mod scope;
 pub use scope::Scope;
 
-pub mod parser {
-    pub mod prelude {
-        pub use super::super::{
-            GetterCollection, SyntaxTreeGetterCollector, TokenStreamGetterCollector,
-        };
-    }
+pub mod prelude {
+    pub use super::{
+        CrateTraverser, GetterCollection, SyntaxTreeGetterCollector, TokenStreamGetterCollector,
+    };
 }

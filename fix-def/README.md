@@ -1,10 +1,10 @@
 # fix-getters-def
 
-This package is a tool to fix getters definitions by removing the `get_` prefix
-according to rules defined in [`rules`](../rules/). It also inserts a
-`[doc(alias = "get_name")]` attribute where necessary so that the new name for
-the getter can be retrieved from the documentations by searching for previous
-name.
+This package is a tool to fix getters definitions by removing the `get` prefix
+according to rules defined in [`rules`](../rules/). It can also optionally
+insert a `[doc(alias = "get_name")]` attribute where necessary so that the new
+name for the getter can be retrieved from the documentations by searching
+previous name.
 
 See the [workspace documentation](../README.md) for more details on `fix-getters`.
 
@@ -30,6 +30,9 @@ cargo fmt
 ```
 
 You can also omit the _PROJECT_PATH_ in which case current directory will be used.
+
+Use the `--doc-alias` option (short `-d`) if you want to generate a doc alias
+attribute with the original name for the renamed functions.
 
 Note that the call sites won't be changed. Use [fix-calls](../fix-calls/) for
 that.

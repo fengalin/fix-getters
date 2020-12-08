@@ -8,7 +8,7 @@ use std::{
     rc::Rc,
 };
 use syn::visit::{self, Visit};
-use utils::{getter, parser::prelude::*, DocCodeGetterCollector, NonGetterReason, Scope};
+use utils::{getter, prelude::*, DocCodeGetterCollector, NonGetterReason, Scope};
 
 use crate::{GetterCallCollection, TSGetterCallCollector};
 

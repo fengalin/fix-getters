@@ -1,12 +1,12 @@
-mod fix;
-use fix::fix;
+mod fixer;
+use fixer::GetterCallFixer;
 
 mod collectors;
 pub use collectors::*;
 
 use log::{error, info};
 use std::{path::PathBuf, process};
-use utils::fs;
+use utils::prelude::*;
 
 fn main() {
     let m = clap::App::new(clap::crate_name!())
@@ -73,7 +73,7 @@ fn main() {
     // Traverse the given crate tree following the rules defined in crate `rules`
     // and apply `fix` on elligible files.
     info!("Processing {:?}", path);
-    if let Err(error) = fs::traverse(&path, &output_path, &fix) {
+    if let Err(error) = GetterCallFixer.traverse(&path, &output_path) {
         let _ = error!("{}", error);
         process::exit(1);
     }

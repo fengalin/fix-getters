@@ -2,7 +2,7 @@
 
 use rules::ReturnsBool;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
-use utils::{parser::prelude::*, Getter, GetterError};
+use utils::{prelude::*, Getter, GetterError};
 
 #[derive(Debug)]
 struct GetterCallCollectionInner(HashMap<usize, Vec<Getter>>);

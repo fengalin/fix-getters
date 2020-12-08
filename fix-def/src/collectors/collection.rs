@@ -2,7 +2,7 @@
 
 use rules::ReturnsBool;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
-use utils::{parser::prelude::*, GetterError};
+use utils::{prelude::*, GetterError};
 
 use crate::GetterDef;
 

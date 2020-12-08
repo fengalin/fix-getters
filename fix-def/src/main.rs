@@ -1,5 +1,5 @@
-mod fix;
-use fix::fix;
+mod fixer;
+use fixer::GetterDefFixer;
 
 mod getter_def;
 pub use getter_def::GetterDef;
@@ -9,13 +9,19 @@ pub use collectors::*;
 
 use log::{error, info};
 use std::{path::PathBuf, process};
-use utils::fs;
+use utils::prelude::*;
 
 fn main() {
     let m = clap::App::new(clap::crate_name!())
         .version(clap::crate_version!())
         .author(clap::crate_authors!())
         .about(clap::crate_description!())
+        .arg(
+            clap::Arg::with_name("doc-alias")
+                .short("d")
+                .long("doc-alias")
+                .help("Had a doc alias to the renamed functions"),
+        )
         .arg(
             clap::Arg::with_name("quiet")
                 .short("q")
@@ -71,9 +77,10 @@ fn main() {
     };
 
     // Traverse the given crate tree following the rules defined in crate `rules`
-    // and apply `fix` on elligible files.
+    // and fix the elligible files.
+    let mut fixer = GetterDefFixer::new(m.is_present("doc-alias"));
     info!("Processing {:?}", path);
-    if let Err(error) = fs::traverse(&path, &output_path, &fix) {
+    if let Err(error) = fixer.traverse(&path, &output_path) {
         let _ = error!("{}", error);
         process::exit(1);
     }
