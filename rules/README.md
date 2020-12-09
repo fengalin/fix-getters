@@ -18,7 +18,7 @@ The `rules` apply to:
 * **`dir-entry`** — directory entry filtering rules. This features is enabled by
   default. Use `default-features = false` if your use case differs.
 
-## Function rules
+## Function name rules
 
 The initial intent is to comply with Rust [naming conventions for getter methods](https://doc.rust-lang.org/1.0.0/style/style/naming/README.html#getter/setter-methods-%5Brfc-344%5D):
 
@@ -56,7 +56,7 @@ Another rule is applied to homogenize functions names in the form
 `get_mut_something` as `something_mut`.
 
 The `fix-getters` tools also apply selective rules based on on the function
-signature. See the dedicated chapter in this [`README`](../README.md).
+signature. See the dedicated chapter in this [`README`](../README.md#get-functions-selection).
 
 ### Functions returning exactly one `bool`
 
@@ -78,7 +78,7 @@ of verbs and the matching substitutions and also includes other cases such as:
 
 #### Special first tokens
 
-Modal verbs should be kept unchanged and no `is_` prefix should be used. E.g.:
+Modal verbs should be kept unchanged and no `is` prefix should be used. E.g.:
 
 * `get_can_focus` -> `can_focus`.
 * `get_must_...` -> `must_...`.
@@ -103,7 +103,7 @@ See `BOOL_EXACT_SUBSTITUTES` in [`function.rs`](src/function.rs).
 
 #### get_is prefix
 
-Finally, the `is_` prefix shouldn't be repeated when already present:
+Finally, the `is` prefix shouldn't be repeated when already present:
 
 * `get_is_active` -> `is_active`.
 

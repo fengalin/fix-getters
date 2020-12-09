@@ -1,6 +1,6 @@
 # fix-getters
 
-This repository contains crates and tools to help with the removal of the `get_`
+This repository contains crates and tools to help with the removal of the `get`
 prefix from getters in existing Rust code.
 
 Rust [naming conventions for getter methods](https://doc.rust-lang.org/1.0.0/style/style/naming/README.html#getter/setter-methods-%5Brfc-344%5D)
@@ -8,12 +8,12 @@ stipulates to use:
 
 _"A method foo(&self) -> &T for getting the current value of the field."_
 
-Attempts at removing the `get_` prefix automatically or manually proved to be
+Attempts at removing the `get` prefix automatically or manually proved to be
 suboptimal with large code bases:
 
 * Some `get_*` functions actually perform some sort of computation, so we can't
   exactly consider they return the current value of a field.
-* Removing the `get_` prefix automatically can result in invalid code.
+* Removing the `get` prefix automatically can result in invalid code.
   Ex. `get_mut`, `get_loop`, ...
 * Getters returning a `bool` should usually use the form `is_suffix`, but
   sometimes, we want to use verbs. E.g.: `if element.emits_eos()`.
