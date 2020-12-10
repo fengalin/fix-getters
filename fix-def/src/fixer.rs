@@ -87,3 +87,34 @@ impl CrateTraverser for GetterDefFixer {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn fix_baseline() {
+        let mut input_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        input_path.push("test_samples");
+        input_path.push("input");
+
+        let output_path = Some(env::temp_dir());
+
+        let mut fixer = GetterDefFixer::new(true);
+        fixer.traverse(&input_path, &output_path).unwrap();
+
+        let mut output_path = output_path.unwrap();
+        output_path.push("baseline.rs");
+
+        let output = fs::read_to_string(&output_path).unwrap();
+
+        let mut expected_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        expected_path.push("test_samples");
+        expected_path.push("expected");
+        expected_path.push("baseline.rs");
+
+        let expected = fs::read_to_string(&output_path).unwrap();
+        assert_eq!(output, expected);
+    }
+}
