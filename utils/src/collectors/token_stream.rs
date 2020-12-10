@@ -6,8 +6,7 @@ use crate::{GetterCollection, Scope};
 
 /// A [`Getter`](crate::Getter)s collector visting a [`TokenStream`](proc_macro2::TokenStream).
 ///
-/// A [`TokenStream`](proc_macro2::TokenStream) is provided by [`syn`] when a macro
-/// or is encountered.
+/// A [`TokenStream`](proc_macro2::TokenStream) is provided by [`syn`] when a macro is encountered.
 ///
 /// This is also useful to parse documentation, once the different lines of the documentation
 /// and the code it contains is gethered together. Use a [`DocCodeGetterCollector`](super::DocCodeGetterCollector)

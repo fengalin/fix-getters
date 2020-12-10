@@ -25,11 +25,11 @@ suboptimal with large code bases:
 
 ## Get functions selection
 
-Not all `get` function should be renamed. Besides the [`rules`](rules) enforced
-when renaming the function, other criteria are observed before deciding whether
-to apply the new name. `get` functions returning exactly one `bool` are also
-apart since they are usually renamed using an `is` prefix or a conjugated form
-which make the new name suitable in expressions.
+Not all `get` function should be renamed. Besides the [`rules`](rules/README.md#function-name-rules)
+enforced while renaming the function, other criteria are observed before
+deciding whether to apply the new name. `get` functions returning exactly one
+`bool` are also apart since they are usually renamed using an `is` prefix or a
+conjugated form which make the new name suitable in expressions.
 
 The following rules apply to `get` functions not returning exactly one `bool`.
 They are a conservative which might left behind candidates but it's easier to

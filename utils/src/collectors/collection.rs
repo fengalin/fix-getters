@@ -3,7 +3,7 @@
 /// A `trait` that allows intergrating with [`Getter`](crate::Getter) Collections.
 ///
 /// Parsing Rust code involves different components in order to
-/// deal with regular code, macros and code in document. Implementing
+/// deal with regular code, macros and code in documentation. Implementing
 /// this `trait` on data structure involved in collecting [`Getter`](crate::Getter)s
 /// eases the integration in these components.
 ///
