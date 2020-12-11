@@ -95,9 +95,9 @@ mod tests {
 
     #[test]
     fn fix_baseline() {
-        let mut input_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        input_path.push("test_samples");
-        input_path.push("input");
+        let input_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("test_samples")
+            .join("input");
 
         let output_path = Some(env::temp_dir());
 
@@ -106,15 +106,14 @@ mod tests {
 
         let mut output_path = output_path.unwrap();
         output_path.push("baseline.rs");
-
         let output = fs::read_to_string(&output_path).unwrap();
 
-        let mut expected_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        expected_path.push("test_samples");
-        expected_path.push("expected");
-        expected_path.push("baseline.rs");
+        let expected_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("test_samples")
+            .join("expected")
+            .join("baseline.rs");
+        let expected = fs::read_to_string(&expected_path).unwrap();
 
-        let expected = fs::read_to_string(&output_path).unwrap();
         assert_eq!(output, expected);
     }
 }
