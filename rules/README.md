@@ -37,9 +37,9 @@ A `get` function is considered eligible for `get` prefix removal if:
   E.g.: `get_mut`, `get_loop`, `get_type`, ... are kept as is.
   
   Note that this is rather a conservative approach, other solutions would be to
-  generate `mut_`, `loop_`, `type_` or `#mut`, `#loop`, `#type`, or even a mix
-  depending on the keyword. E.g. we could keep `get_mut`, but use the quite
-  common `type_` and `#async` variantes. This is something I would like to
+  generate `mut_`, `loop_`, `type_` or `r#mut`, `r#loop`, `r#type`, or even a
+  mix depending on the keyword. E.g. we could keep `get_mut`, but use the quite
+  common `type_` and `r#async` variantes. This is something I would like to
   discuss.
 
 * The method would result inconsistent with other similar methods.
