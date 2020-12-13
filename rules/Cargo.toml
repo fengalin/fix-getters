@@ -11,7 +11,7 @@ repository = "https://github.com/fengalin/fix-getters"
 edition = "2018"
 
 [dependencies]
-once_cell = "1"
+once_cell = "1.5"
 
 [features]
 default = ["dir-entry"]

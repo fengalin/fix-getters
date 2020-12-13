@@ -1,4 +1,4 @@
-# fix-getters ![CI](https://github.com/fengalin/fix-getters/workflows/CI/badge.svg)
+# fix-getters ![CI](https://github.com/fengalin/fix-getters/workflows/CI/badge.svg) [![dependency status](https://deps.rs/repo/github/fengalin/fix-getters/status.svg)](https://deps.rs/repo/github/fengalin/fix-getters)
 
 This repository contains crates and tools to help with the removal of the `get`
 prefix from getters in existing Rust code.
