@@ -32,7 +32,7 @@ deciding whether to apply the new name. `get` functions returning exactly one
 conjugated form which make the new name suitable in expressions.
 
 The following rules apply to `get` functions not returning exactly one `bool`.
-They are a conservative which might left behind candidates but it's easier to
+They are conservative which might leave behind candidates but it's easier to
 manually change these candidates after the automatic pass than searching in the
 automatic changes.
   
