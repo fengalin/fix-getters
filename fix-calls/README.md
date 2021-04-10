@@ -10,6 +10,14 @@ See the [workspace documentation](../README.md) for more details on `fix-getters
 You can install `fix-getters-calls` using `cargo`, which allows invoking the
 tool as a regular command.
 
+### From crates.io
+
+```
+cargo install fix-getters-calls
+```
+
+### From source
+
 ```
 cd fix-getters/fix-calls
 cargo install --path .
@@ -20,13 +28,12 @@ cargo install --path .
 **Warning:** by default, `fix-getters-calls` will overwrite existing files.
 See below if you want to check the output in a separate directory.
 
+This will fix the project in current directory:
+
 ```
-fix-getters-calls _PROJECT_PATH_
-cd _PROJECT_PATH_
+fix-getters-calls
 cargo fmt
 ```
-
-You can also omit the _PROJECT_PATH_ in which case current directory will be used.
 
 Note that the getters definition won't be changed. Use [fix-def](../fix-def/)
 for that.

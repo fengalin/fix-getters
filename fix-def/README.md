@@ -13,6 +13,14 @@ See the [workspace documentation](../README.md) for more details on `fix-getters
 You can install `fix-getters-def` using `cargo`, which allows invoking the tool
 as a regular command.
 
+### From crates.io
+
+```
+cargo install fix-getters-def
+```
+
+### From source
+
 ```
 cd fix-getters/fix-def
 cargo install --path .
@@ -23,13 +31,12 @@ cargo install --path .
 **Warning:** by default, `fix-getters-def` will overwrite existing files.
 See below if you want to check the output in a separate directory.
 
+This will fix the project in current directory:
+
 ```
-fix-getters-def _PROJECT_PATH_
-cd _PROJECT_PATH_
+fix-getters-def
 cargo fmt
 ```
-
-You can also omit the _PROJECT_PATH_ in which case current directory will be used.
 
 Use the `--doc-alias` option (short `-d`) if you want to generate a doc alias
 attribute with the original name for the renamed functions.
