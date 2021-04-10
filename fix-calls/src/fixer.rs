@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use utils::{prelude::*, Error, ParseFileError};
 
-use crate::{GetterCallCollection, STGetterCallCollector};
+use crate::{GetterCallCollection, StGetterCallCollector};
 
 /// Rust source file level getter calls fixer.
 pub struct GetterCallFixer;
@@ -33,7 +33,7 @@ impl CrateTraverser for GetterCallFixer {
         };
 
         let getter_collection = GetterCallCollection::default();
-        STGetterCallCollector::collect(path, &syntax_tree, &getter_collection);
+        StGetterCallCollector::collect(path, &syntax_tree, &getter_collection);
 
         let output_path = match output_path {
             Some(output_path) => output_path,
@@ -103,6 +103,15 @@ mod tests {
             .join("expected")
             .join("baseline.rs");
         let expected = fs::read_to_string(&expected_path).unwrap();
+
+        // Uncomment to keep output
+        /*
+        let output_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("test_samples")
+            .join("output.rs");
+        let f = fs::File::create(output_path).unwrap();
+        std::io::BufWriter::new(f).write_all(output.as_bytes()).unwrap();
+        */
 
         assert_eq!(output, expected);
     }

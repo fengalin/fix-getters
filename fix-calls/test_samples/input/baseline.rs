@@ -10,6 +10,7 @@
 ///     let my_instance = MyType { foo: 42u64 };
 ///     let _ = my_instance.get_multiple_arg(42u64);
 ///     let other = my_instance.get_foo();
+///     let _ = my_instance.get_type();
 /// }
 /// ```
 ///
@@ -19,6 +20,7 @@
 ///         let _ = $self.get_result();
 ///         let _ = $self.get_multiple_arg(42u64);
 ///         let ret = $self.get_foo();
+///         let _ = $self.get_type();
 ///         ret
 ///     })
 /// );
@@ -34,6 +36,8 @@ const MY_CONST_NOT_METHOD_PARAM: u64 = get_not_method_param::<u64>(42u64);
 
 static My_STATIC: u64 = MyType::get_no_self(42u64);
 
+const MY_TYPE: u64 = get_type();
+
 const MY_BOOLABLE: bool = get_boolable(42u64);
 
 const MY_BOOL_IS_EQUAL: bool = get_is_equal(42u64);
@@ -47,6 +51,7 @@ macro_rules! get_via_macro (
         let _ = $self.get_result();
         let _ = $self.get_multiple_arg($self.get_foo());
         let ret = $self.get_foo();
+        let _ = $self.get_type();
         ret
     })
 );
@@ -56,6 +61,7 @@ fn from_my_type() -> u64 {
     let _ = my_instance.get_multiple_arg(my_instance.get_foo());
     let other = my_instance.get_foo();
     let other = MyType { foo: other }.get_foo();
+    let _ = MyType { foo: other }.get_type();
     let other = MyType { foo: other }.get_foo_param::<u64>();
     MyType::get_no_self(other)
 }

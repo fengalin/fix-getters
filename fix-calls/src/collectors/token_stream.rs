@@ -14,14 +14,14 @@ use crate::GetterCallCollection;
 /// A [`TokenStreamGetterCollector`](utils::TokenStreamGetterCollector) collecting
 /// renamable [`Getter`](utils::Getter) calls.
 #[derive(Debug)]
-pub struct TSGetterCallCollector<'scope> {
+pub struct TsGetterCallCollector<'scope> {
     state: State,
     getter_collection: GetterCallCollection,
     path: &'scope Path,
     scope: &'scope Scope,
 }
 
-impl<'scope> TokenStreamGetterCollector for TSGetterCallCollector<'scope> {
+impl<'scope> TokenStreamGetterCollector for TsGetterCallCollector<'scope> {
     type GetterCollection = GetterCallCollection;
 
     fn collect(
@@ -30,7 +30,7 @@ impl<'scope> TokenStreamGetterCollector for TSGetterCallCollector<'scope> {
         stream: &TokenStream,
         getter_collection: &GetterCallCollection,
     ) {
-        let mut parser = TSGetterCallCollector {
+        let mut parser = TsGetterCallCollector {
             state: State::default(),
             getter_collection: GetterCallCollection::clone(getter_collection),
             path,
@@ -41,7 +41,7 @@ impl<'scope> TokenStreamGetterCollector for TSGetterCallCollector<'scope> {
     }
 }
 
-impl<'scope> TSGetterCallCollector<'scope> {
+impl<'scope> TsGetterCallCollector<'scope> {
     fn parse_(&mut self, mut rest: Cursor) {
         while let Some((tt, next)) = rest.token_tree() {
             // Find patterns `.get_suffix()`

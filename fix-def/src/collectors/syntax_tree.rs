@@ -9,25 +9,25 @@ use std::{
 use syn::visit::{self, Visit};
 use utils::{getter, prelude::*, DocCodeGetterCollector, NonGetterReason, Scope};
 
-use crate::{GetterDefCollection, TSGetterDefCollector};
+use crate::{GetterDefCollection, TsGetterDefCollector};
 
 /// A [`SyntaxTreeGetterCollector`](utils::SyntaxTreeGetterCollector) collecting
 /// renamable [`Getter`](utils::Getter) definitions as [`GetterDef`](crate::GetterDef).
 #[derive(Debug)]
-pub struct STGetterDefCollector<'path> {
+pub struct StGetterDefCollector<'path> {
     getter_collection: GetterDefCollection,
     scope_stack: Vec<Rc<RefCell<Scope>>>,
     path: &'path Path,
-    doc_code_collector: DocCodeGetterCollector<TSGetterDefCollector<'path>>,
+    doc_code_collector: DocCodeGetterCollector<TsGetterDefCollector<'path>>,
 }
 
-impl<'path> SyntaxTreeGetterCollector for STGetterDefCollector<'path> {
+impl<'path> SyntaxTreeGetterCollector for StGetterDefCollector<'path> {
     type GetterCollection = GetterDefCollection;
 
     fn collect(path: &Path, syntax_tree: &syn::File, getter_collection: &GetterDefCollection) {
-        let mut visitor = STGetterDefCollector {
+        let mut visitor = StGetterDefCollector {
             getter_collection: GetterDefCollection::clone(getter_collection),
-            doc_code_collector: DocCodeGetterCollector::<TSGetterDefCollector>::new(
+            doc_code_collector: DocCodeGetterCollector::<TsGetterDefCollector>::new(
                 path,
                 &getter_collection,
             ),
@@ -38,7 +38,7 @@ impl<'path> SyntaxTreeGetterCollector for STGetterDefCollector<'path> {
     }
 }
 
-impl<'path> STGetterDefCollector<'path> {
+impl<'path> StGetterDefCollector<'path> {
     fn process(&mut self, sig: &syn::Signature) {
         use NonGetterReason::*;
         use Scope::*;
@@ -144,7 +144,7 @@ impl<'path> STGetterDefCollector<'path> {
     }
 }
 
-impl<'ast, 'path> Visit<'ast> for STGetterDefCollector<'path> {
+impl<'ast, 'path> Visit<'ast> for StGetterDefCollector<'path> {
     fn visit_item(&mut self, node: &'ast syn::Item) {
         self.push_scope(node);
         visit::visit_item(self, node);
@@ -168,7 +168,7 @@ impl<'ast, 'path> Visit<'ast> for STGetterDefCollector<'path> {
 
     fn visit_macro(&mut self, node: &'ast syn::Macro) {
         self.push_scope(node);
-        TSGetterDefCollector::collect(
+        TsGetterDefCollector::collect(
             self.path,
             &self.scope(),
             &node.tokens,

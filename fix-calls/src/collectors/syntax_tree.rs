@@ -10,25 +10,25 @@ use std::{
 use syn::visit::{self, Visit};
 use utils::{getter, prelude::*, DocCodeGetterCollector, NonGetterReason, Scope};
 
-use crate::{GetterCallCollection, TSGetterCallCollector};
+use crate::{GetterCallCollection, TsGetterCallCollector};
 
 /// A [`SyntaxTreeGetterCollector`](utils::SyntaxTreeGetterCollector) collecting
 /// renamable [`Getter`](utils::Getter) calls.
 #[derive(Debug)]
-pub struct STGetterCallCollector<'path> {
+pub struct StGetterCallCollector<'path> {
     scope_stack: Vec<Rc<RefCell<Scope>>>,
     getter_collection: GetterCallCollection,
     path: &'path Path,
-    doc_code_collector: DocCodeGetterCollector<TSGetterCallCollector<'path>>,
+    doc_code_collector: DocCodeGetterCollector<TsGetterCallCollector<'path>>,
 }
 
-impl<'path> SyntaxTreeGetterCollector for STGetterCallCollector<'path> {
+impl<'path> SyntaxTreeGetterCollector for StGetterCallCollector<'path> {
     type GetterCollection = GetterCallCollection;
 
     fn collect(path: &Path, syntax_tree: &syn::File, getter_collection: &GetterCallCollection) {
-        let mut visitor = STGetterCallCollector {
+        let mut visitor = StGetterCallCollector {
             getter_collection: GetterCallCollection::clone(getter_collection),
-            doc_code_collector: DocCodeGetterCollector::<TSGetterCallCollector>::new(
+            doc_code_collector: DocCodeGetterCollector::<TsGetterCallCollector>::new(
                 path,
                 &getter_collection,
             ),
@@ -39,7 +39,7 @@ impl<'path> SyntaxTreeGetterCollector for STGetterCallCollector<'path> {
     }
 }
 
-impl<'path> STGetterCallCollector<'path> {
+impl<'path> StGetterCallCollector<'path> {
     fn process_method_call(&mut self, method_call: &syn::ExprMethodCall) {
         use NonGetterReason::*;
 
@@ -115,7 +115,7 @@ impl<'path> STGetterCallCollector<'path> {
     }
 }
 
-impl<'ast, 'path> Visit<'ast> for STGetterCallCollector<'path> {
+impl<'ast, 'path> Visit<'ast> for StGetterCallCollector<'path> {
     fn visit_item(&mut self, node: &'ast syn::Item) {
         self.push_scope(node);
         visit::visit_item(self, node);
@@ -134,7 +134,7 @@ impl<'ast, 'path> Visit<'ast> for STGetterCallCollector<'path> {
 
     fn visit_macro(&mut self, node: &'ast syn::Macro) {
         self.push_scope(node);
-        TSGetterCallCollector::collect(
+        TsGetterCallCollector::collect(
             self.path,
             &self.scope(),
             &node.tokens,

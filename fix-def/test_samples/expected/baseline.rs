@@ -6,6 +6,9 @@
 //!     pub fn foo(&self) -> u64 {
 //!         self.0
 //!     }
+//!     pub fn type_(&self) -> u64 {
+//!         self.0
+//!     }
 //! }
 //! ```
 //!
@@ -14,6 +17,9 @@
 //!     ($name:ident) => {
 //!         impl $name {
 //!             fn from_macro(&self) -> u64 {
+//!                 self.0
+//!             }
+//!             fn type_(&self) -> u64 {
 //!                 self.0
 //!             }
 //!         }
@@ -28,6 +34,10 @@ pub fn foo() -> u64 {
 }
 
 pub const fn get_foo() -> u64 {
+    42u64
+}
+
+pub const fn get_type() -> u64 {
     42u64
 }
 
@@ -46,6 +56,10 @@ struct MyType {
 impl MyType {
     #[doc(alias = "get_property_foo")]
 #[doc(alias = "get_foo")]     pub fn foo(&self) -> u64 {
+        self.foo
+    }
+
+#[doc(alias = "get_type")]     fn type_(&self) -> u64 {
         self.foo
     }
 
@@ -129,6 +143,10 @@ macro_rules! get_from_macro(
                 self.foo
             }
 
+            fn type_(&self) -> u64 {
+                self.foo
+            }
+
             fn is_42(&self) -> bool {
                 self.foo == 42u64
             }
@@ -181,6 +199,8 @@ get_from_macro!(MyType);
 trait MyTrait {
 #[doc(alias = "get_trait_no_impl")]     fn trait_no_impl(&self) -> u64;
 
+#[doc(alias = "get_type")]     fn type_(&self) -> u64;
+
 #[doc(alias = "get_trait_impl")]     fn trait_impl(&self) -> u64 {
         self.get_trait_no_impl()
     }
@@ -192,6 +212,10 @@ impl MyTrait for MyType {
         42u64
     }
 
+    fn type_(&self) -> u64 {
+        42u64
+    }
+
     fn get_trait_impl_param<T: From<u64>>(&self) -> T {
         self.get_trait_no_impl().into()
     }
@@ -199,6 +223,10 @@ impl MyTrait for MyType {
 
 impl<'a> MyTrait for &'a [MyType] {
     fn trait_no_impl(&self) -> u64 {
+        42u64
+    }
+
+    fn type_(&self) -> u64 {
         42u64
     }
 
@@ -214,6 +242,10 @@ impl<'a> MyTrait for &'a [&'a (dyn Test + Send)] {
         42u64
     }
 
+    fn type_(&self) -> u64 {
+        42u64
+    }
+
     fn get_trait_impl_param<T: From<u64>>(&self) -> T {
         self.get_trait_no_impl().into()
     }
@@ -221,6 +253,10 @@ impl<'a> MyTrait for &'a [&'a (dyn Test + Send)] {
 
 impl<'a> MyTrait for &'a (u64, bool) {
     fn trait_no_impl(&self) -> u64 {
+        42u64
+    }
+
+    fn type_(&self) -> u64 {
         42u64
     }
 

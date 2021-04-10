@@ -17,50 +17,61 @@ pub static RESERVED: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     let mut reserved = HashSet::new();
     reserved.insert("");
     reserved.insert("as");
-    reserved.insert("async");
-    reserved.insert("await");
-    reserved.insert("break");
-    reserved.insert("const");
-    reserved.insert("continue");
-    reserved.insert("crate");
-    reserved.insert("dyn");
+    reserved.insert("const"); // keep `get_const` similar to `get`
     reserved.insert("else");
-    reserved.insert("enum");
-    reserved.insert("extern");
     reserved.insert("false");
-    reserved.insert("fn");
     reserved.insert("for");
     reserved.insert("if");
-    reserved.insert("impl");
     reserved.insert("in");
-    reserved.insert("loop");
-    reserved.insert("match");
-    reserved.insert("mod");
-    reserved.insert("move");
-    reserved.insert("mut");
-    reserved.insert("pub");
+    reserved.insert("mut"); // keep `get_mut` similar to `get`
     reserved.insert("optional"); // keep `get_optional` similar to `get`
-    reserved.insert("owned");
-    reserved.insert("ref");
-    reserved.insert("return");
-    reserved.insert("self");
+    reserved.insert("owned"); // keep `get_owned` similar to `get`
+    reserved.insert("ref"); // keep `get_ref` similar to `get`
     reserved.insert("some"); // keep `get_some` similar to `get`
-    reserved.insert("static");
-    reserved.insert("struct");
-    reserved.insert("super");
-    reserved.insert("trait");
     reserved.insert("true");
-    reserved.insert("type");
     reserved.insert("unchecked_mut"); // don't change call-sites: used in various Rust types
-    reserved.insert("union");
-    reserved.insert("unsafe");
-    reserved.insert("use");
     reserved.insert("where");
     reserved.insert("while");
     reserved
 });
 
-/// Substitutes for tokens of getters returning a `bool`.
+/// Substitutes to be used when the suffix matches exactly.
+///
+/// The convention is to rename getters `get_suffix` as `suffix`,
+/// but there are cases for which a better name should be used:
+///
+/// - `get_type` -> `type_`.
+pub static EXACT_SUFFIX_SUBSTITUTES: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
+    let mut exact_subs = HashMap::new();
+    exact_subs.insert("async", "async_");
+    exact_subs.insert("await", "await_");
+    exact_subs.insert("break", "break_");
+    exact_subs.insert("crate", "crate_");
+    exact_subs.insert("continue", "continue_");
+    exact_subs.insert("dyn", "dyn_");
+    exact_subs.insert("enum", "enum_");
+    exact_subs.insert("extern", "extern_");
+    exact_subs.insert("fn", "fn_");
+    exact_subs.insert("impl", "impl_");
+    exact_subs.insert("loop", "loop_");
+    exact_subs.insert("match", "match_");
+    exact_subs.insert("mod", "mod_");
+    exact_subs.insert("move", "move_");
+    exact_subs.insert("pub", "pub_");
+    exact_subs.insert("return", "return_");
+    exact_subs.insert("self", "self_");
+    exact_subs.insert("static", "static_");
+    exact_subs.insert("struct", "struct_");
+    exact_subs.insert("super", "super_");
+    exact_subs.insert("trait", "trait_");
+    exact_subs.insert("type", "type_");
+    exact_subs.insert("union", "union_");
+    exact_subs.insert("unsafe", "unsafe_");
+    exact_subs.insert("use", "use_");
+    exact_subs
+});
+
+/// Substitutes for tokens of `bool` getters.
 ///
 /// The convention is to rename `bool` getters `get_suffix` as `is_suffix`,
 /// but there are cases for which we want a better name:
@@ -139,7 +150,7 @@ pub static BOOL_FIRST_TOKEN_NO_PREFIX: Lazy<HashSet<&'static str>> = Lazy::new(|
     first_tokens
 });
 
-/// Substitutes of `bool` getter to be used when the suffixes matches exactly.
+/// Substitutes of `bool` getter to be used when the suffix matches exactly.
 ///
 /// The convention is to rename `bool` getters `get_suffix` as `is_suffix`,
 /// but there are cases for which it would be confusing to add the `is` prefix:
@@ -210,6 +221,14 @@ pub fn try_rename_getter_suffix(
             ReturnsBool::Maybe
         }
     };
+
+    if let Some(substitute) = EXACT_SUFFIX_SUBSTITUTES.get(suffix) {
+        return Ok(NewName {
+            new_name: substitute.to_string(),
+            returns_bool,
+            rule: NewNameRule::Substituted,
+        });
+    }
 
     let splits: Vec<&str> = suffix.splitn(2, '_').collect();
     if splits.len() > 1 && PREFIX_TO_POSTFIX.contains(splits[0]) {
@@ -476,6 +495,11 @@ mod tests {
         assert!(new_name.returns_bool().is_false());
         assert_eq!(new_name, "structure");
 
+        let new_name = try_rename_would_be_getter(&"get_type", false).unwrap();
+        assert!(new_name.is_substituted());
+        assert!(new_name.returns_bool().is_false());
+        assert_eq!(new_name, "type_");
+
         // Bool-alike, but not a bool
         let new_name = try_rename_would_be_getter(&"get_activable", false).unwrap();
         assert!(new_name.is_regular());
@@ -502,6 +526,11 @@ mod tests {
         assert!(new_name.is_regular());
         assert!(new_name.returns_bool().is_true());
         assert_eq!(new_name, "is_structure");
+
+        let new_name = try_rename_would_be_getter(&"get_type", true).unwrap();
+        assert!(new_name.is_regular());
+        assert!(new_name.returns_bool().is_true());
+        assert_eq!(new_name, "is_type");
 
         let new_name = try_rename_would_be_getter(&"get_mute", true).unwrap();
         assert!(new_name.is_substituted());
@@ -559,6 +588,11 @@ mod tests {
         assert!(new_name.is_regular());
         assert!(new_name.returns_bool().is_maybe());
         assert_eq!(new_name, "structure");
+
+        let new_name = try_rename_would_be_getter(&"get_type", ReturnsBool::Maybe).unwrap();
+        assert!(new_name.is_substituted());
+        assert!(new_name.returns_bool().is_maybe());
+        assert_eq!(new_name, "type_");
 
         let new_name = try_rename_would_be_getter(&"get_mute", ReturnsBool::Maybe).unwrap();
         assert!(new_name.is_substituted());
