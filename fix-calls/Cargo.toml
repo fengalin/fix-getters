@@ -18,4 +18,4 @@ stderrlog = "0.5"
 syn = { version = "1.0", default-features = false, features = ["parsing", "full", "extra-traits", "visit"] }
 
 rules = { package = "fix-getters-rules", version = "0.2.1" }
-utils = { package = "fix-getters-utils", path = "../utils" }
+utils = { package = "fix-getters-utils", version = "0.2.1" }
