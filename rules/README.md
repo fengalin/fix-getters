@@ -34,7 +34,7 @@ A `get` function is considered eligible for `get` prefix removal if:
 * The function starts with `get_`.
 * The suffix is not a Rust keyword, which would result in invalid code.
   
-  E.g.: `get_mut`, `get_loop`, ... are kept as is.
+  E.g.: `get_as`, `get_false`, ... are kept as is.
 
 * The method would result inconsistent with other similar methods.
 
@@ -45,7 +45,7 @@ A `get` function is considered eligible for `get` prefix removal if:
   
 See `RESERVED` in [`function.rs`](src/function.rs).
   
-* The suffix is not part of a subsitution list.
+* The suffix is not part of a subsitution list. This includes some Rust keywords.
   
   E.g.: `get_type` is replaced with `type_`.
   
