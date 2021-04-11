@@ -71,7 +71,7 @@ name = "fix-getters-calls"
 version = "0.2.1"
 dependencies = [
  "clap",
- "fix-getters-rules",
+ "fix-getters-rules 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "fix-getters-utils",
  "log",
  "proc-macro2",
@@ -84,7 +84,7 @@ name = "fix-getters-def"
 version = "0.2.1"
 dependencies = [
  "clap",
- "fix-getters-rules",
+ "fix-getters-rules 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "fix-getters-utils",
  "log",
  "proc-macro2",
@@ -101,10 +101,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "fix-getters-rules"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87e1feab7e3b7ff36202ce259b5aa51130c6970543d8aad407970a270f116632"
+dependencies = [
+ "once_cell",
+]
+
+[[package]]
 name = "fix-getters-utils"
 version = "0.2.1"
 dependencies = [
- "fix-getters-rules",
+ "fix-getters-rules 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "proc-macro2",
  "syn",
