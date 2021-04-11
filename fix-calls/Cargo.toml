@@ -1,6 +1,6 @@
 [package]
 name = "fix-getters-calls"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["François Laignel <fengalin@free.fr>"]
 categories = ["development-tools", "command-line-utilities"]
 description = "Fix getters call sites by removing the get prefix when applicable"

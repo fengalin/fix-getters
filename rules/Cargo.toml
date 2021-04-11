@@ -1,6 +1,6 @@
 [package]
 name = "fix-getters-rules"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["François Laignel <fengalin@free.fr>"]
 description = "Fix get functions name by removing the get prefix when applicable"
 categories = ["development-tools"]

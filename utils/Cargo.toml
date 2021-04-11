@@ -1,6 +1,6 @@
 [package]
 name = "fix-getters-utils"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["François Laignel <fengalin@free.fr>"]
 categories = ["development-tools", "command-line-utilities"]
 description = "Utils for fix-getters"

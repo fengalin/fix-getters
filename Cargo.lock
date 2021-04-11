@@ -68,7 +68,7 @@ dependencies = [
 
 [[package]]
 name = "fix-getters-calls"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "clap",
  "fix-getters-rules",
@@ -81,7 +81,7 @@ dependencies = [
 
 [[package]]
 name = "fix-getters-def"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "clap",
  "fix-getters-rules",
@@ -95,14 +95,14 @@ dependencies = [
 
 [[package]]
 name = "fix-getters-rules"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "once_cell",
 ]
 
 [[package]]
 name = "fix-getters-utils"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "fix-getters-rules",
  "log",
