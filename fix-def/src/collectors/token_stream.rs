@@ -18,6 +18,7 @@ pub struct TsGetterDefCollector<'scope> {
     state: State,
     getter_collection: GetterDefCollection,
     path: &'scope Path,
+    identification_mode: IdentificationMode,
     scope: &'scope Scope,
 }
 
@@ -28,11 +29,13 @@ impl<'scope> TokenStreamGetterCollector for TsGetterDefCollector<'scope> {
         path: &Path,
         scope: &Scope,
         stream: &TokenStream,
+        identification_mode: IdentificationMode,
         getter_collection: &GetterDefCollection,
     ) {
         let mut parser = TsGetterDefCollector {
             state: State::default(),
             getter_collection: GetterDefCollection::clone(getter_collection),
+            identification_mode,
             path,
             scope,
         };
@@ -226,7 +229,7 @@ impl<'scope> TsGetterDefCollector<'scope> {
     fn process_maybe_getter(&mut self, maybe: MaybeGetter) {
         use NonGetterReason::*;
 
-        if !maybe.getter.returns_bool().is_true() {
+        if !maybe.getter.returns_bool().is_true() && self.identification_mode.is_conservative() {
             // not a bool getter
             if maybe.has_no_args {
                 getter::skip(

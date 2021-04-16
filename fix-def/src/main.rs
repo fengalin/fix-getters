@@ -1,3 +1,6 @@
+mod doc_alias_mode;
+pub use doc_alias_mode::DocAliasMode;
+
 mod fixer;
 use fixer::GetterDefFixer;
 
@@ -21,6 +24,12 @@ fn main() {
                 .short("d")
                 .long("doc-alias")
                 .help("Had a doc alias to the renamed functions"),
+        )
+        .arg(
+            clap::Arg::with_name("conservative")
+                .short("c")
+                .long("conservative")
+                .help("Be conservative when selecting getter functions"),
         )
         .arg(
             clap::Arg::with_name("quiet")
@@ -78,7 +87,18 @@ fn main() {
 
     // Traverse the given crate tree following the rules defined in crate `rules`
     // and fix the elligible files.
-    let mut fixer = GetterDefFixer::new(m.is_present("doc-alias"));
+    let mut fixer = GetterDefFixer::new(
+        if m.is_present("conservative") {
+            IdentificationMode::Conservative
+        } else {
+            IdentificationMode::AllGetFunctions
+        },
+        if m.is_present("doc-alias") {
+            DocAliasMode::Generate
+        } else {
+            DocAliasMode::Discard
+        },
+    );
     info!("Processing {:?}", path);
     if let Err(error) = fixer.traverse(&path, &output_path) {
         let _ = error!("{}", error);

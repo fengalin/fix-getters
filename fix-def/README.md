@@ -6,7 +6,8 @@ insert a `[doc(alias = "get_name")]` attribute where necessary so that the new
 name for the getter can be retrieved from the documentations by searching
 previous name.
 
-See the [workspace documentation](../README.md) for more details on `fix-getters`.
+See the [workspace documentation](../README.md) for more details about
+`fix-getters`.
 
 ## Install
 
@@ -28,6 +29,8 @@ cargo install --path .
 
 ## Usage
 
+### Default invocation
+
 **Warning:** by default, `fix-getters-def` will overwrite existing files.
 See below if you want to check the output in a separate directory.
 
@@ -37,9 +40,6 @@ This will fix the project in current directory:
 fix-getters-def
 cargo fmt
 ```
-
-Use the `--doc-alias` option (short `-d`) if you want to generate a doc alias
-attribute with the original name for the renamed functions.
 
 Note that the call sites won't be changed. Use [fix-calls](../fix-calls/) for
 that.
@@ -53,6 +53,20 @@ fix-getters-def _PROJECT_PATH_ _OUTPUT_PATH_
 The project files won't be changed: modified files will be generated under
 `_OUTPUT_PATH_`. Note however that only the modified files are generated, so
 you won't be able to run `cargo fmt`.
+
+### Conservative get function identification 
+
+Use the `--conservative` option (short `-c`) if you prefer applying a
+conservative approach based on the `get` function signature. By default, all
+`get` functions are renamed.
+
+See the [workspace documentation](../README.md#get-functions-selection) for more
+details about the conservative identification mode.
+
+### Adding `doc-alias` attributes
+
+Use the `--doc-alias` option (short `-d`) if you want to generate a `doc-alias`
+attribute with the original name for the renamed functions.
 
 ## Uninstall
 

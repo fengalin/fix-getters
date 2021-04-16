@@ -6,16 +6,20 @@ use std::path::{Path, PathBuf};
 
 use utils::{prelude::*, Error, ParseFileError};
 
-use crate::{GetterDefCollection, StGetterDefCollector};
+use crate::{DocAliasMode, GetterDefCollection, StGetterDefCollector};
 
 /// Rust source file level getter definitions fixer.
 pub struct GetterDefFixer {
-    adds_doc_alias: bool,
+    identification_mode: IdentificationMode,
+    doc_alias_alias: DocAliasMode,
 }
 
 impl GetterDefFixer {
-    pub fn new(adds_doc_alias: bool) -> Self {
-        GetterDefFixer { adds_doc_alias }
+    pub fn new(identification_mode: IdentificationMode, doc_alias_alias: DocAliasMode) -> Self {
+        GetterDefFixer {
+            identification_mode,
+            doc_alias_alias,
+        }
     }
 }
 
@@ -40,7 +44,12 @@ impl CrateTraverser for GetterDefFixer {
         };
 
         let getter_collection = GetterDefCollection::default();
-        StGetterDefCollector::collect(&path, &syntax_tree, &getter_collection);
+        StGetterDefCollector::collect(
+            &path,
+            &syntax_tree,
+            self.identification_mode,
+            &getter_collection,
+        );
 
         let output_path = match output_path {
             Some(output_path) => output_path,
@@ -59,7 +68,7 @@ impl CrateTraverser for GetterDefFixer {
 
         for (line_idx, line) in source_code.lines().enumerate() {
             if let Some(getter_def) = getter_collection.get(line_idx) {
-                if self.adds_doc_alias && getter_def.needs_doc_alias() {
+                if self.doc_alias_alias.must_generate() && getter_def.needs_doc_alias() {
                     writer
                         .write_fmt(format_args!("#[doc(alias = \"{}\")] ", getter_def.name()))
                         .map_err(|err| Error::WriteFile(path.to_owned(), err))?;
@@ -93,36 +102,50 @@ mod tests {
     use super::*;
     use std::env;
 
-    #[test]
-    fn fix_baseline() {
+    fn fix_baseline(id_mode: IdentificationMode) {
         let input_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("test_samples")
             .join("input");
 
-        let output_path = Some(env::temp_dir());
+        let file_id = if id_mode.is_conservative() {
+            "conservative"
+        } else {
+            "all_get_functions"
+        };
 
-        let mut fixer = GetterDefFixer::new(true);
-        fixer.traverse(&input_path, &output_path).unwrap();
+        let output_path = env::temp_dir().join("fix-def").join(file_id);
+        fs::create_dir_all(&output_path).unwrap();
+        let output_file = output_path.clone().join("baseline.rs");
 
-        let mut output_path = output_path.unwrap();
-        output_path.push("baseline.rs");
-        let output = fs::read_to_string(&output_path).unwrap();
+        let mut fixer = GetterDefFixer::new(id_mode, DocAliasMode::Generate);
+        fixer.traverse(&input_path, &Some(output_path)).unwrap();
+
+        let output = fs::read_to_string(&output_file).unwrap();
+
+        // Uncomment to keep output
+        /*
+        let keep_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("test_samples")
+            .join(format!("output_{}.rs", file_id));
+        fs::copy(output_file, keep_path).unwrap();
+        */
 
         let expected_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("test_samples")
             .join("expected")
-            .join("baseline.rs");
+            .join(format!("{}.rs", file_id));
         let expected = fs::read_to_string(&expected_path).unwrap();
 
-        // Uncomment to keep output
-        /*
-        let output_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("test_samples")
-            .join("output.rs");
-        let f = fs::File::create(output_path).unwrap();
-        std::io::BufWriter::new(f).write_all(output.as_bytes()).unwrap();
-        */
-
         assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn fix_baseline_conservative() {
+        fix_baseline(IdentificationMode::Conservative)
+    }
+
+    #[test]
+    fn fix_baseline_all_get_functions() {
+        fix_baseline(IdentificationMode::AllGetFunctions)
     }
 }

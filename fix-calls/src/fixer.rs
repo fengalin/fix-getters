@@ -10,7 +10,17 @@ use utils::{prelude::*, Error, ParseFileError};
 use crate::{GetterCallCollection, StGetterCallCollector};
 
 /// Rust source file level getter calls fixer.
-pub struct GetterCallFixer;
+pub struct GetterCallFixer {
+    identification_mode: IdentificationMode,
+}
+
+impl GetterCallFixer {
+    pub fn new(identification_mode: IdentificationMode) -> Self {
+        GetterCallFixer {
+            identification_mode,
+        }
+    }
+}
 
 impl CrateTraverser for GetterCallFixer {
     /// Fixes the file at the given path.
@@ -33,7 +43,12 @@ impl CrateTraverser for GetterCallFixer {
         };
 
         let getter_collection = GetterCallCollection::default();
-        StGetterCallCollector::collect(path, &syntax_tree, &getter_collection);
+        StGetterCallCollector::collect(
+            path,
+            &syntax_tree,
+            self.identification_mode,
+            &getter_collection,
+        );
 
         let output_path = match output_path {
             Some(output_path) => output_path,
@@ -84,35 +99,50 @@ mod tests {
     use super::*;
     use std::env;
 
-    #[test]
-    fn fix_baseline() {
+    fn fix_baseline(id_mode: IdentificationMode) {
         let input_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("test_samples")
             .join("input");
 
-        let output_path = Some(env::temp_dir());
+        let file_id = if id_mode.is_conservative() {
+            "conservative"
+        } else {
+            "all_get_functions"
+        };
 
-        GetterCallFixer.traverse(&input_path, &output_path).unwrap();
+        let output_path = env::temp_dir().join("fix-calls").join(file_id);
+        fs::create_dir_all(&output_path).unwrap();
+        let output_file = output_path.clone().join("baseline.rs");
 
-        let mut output_path = output_path.unwrap();
-        output_path.push("baseline.rs");
-        let output = fs::read_to_string(&output_path).unwrap();
+        let mut fixer = GetterCallFixer::new(id_mode);
+        fixer.traverse(&input_path, &Some(output_path)).unwrap();
+
+        let output = fs::read_to_string(&output_file).unwrap();
+
+        // Uncomment to keep output
+        /*
+        let keep_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("test_samples")
+            .join(format!("output_{}.rs", file_id));
+        fs::copy(output_file, keep_path).unwrap();
+        */
 
         let expected_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("test_samples")
             .join("expected")
-            .join("baseline.rs");
+            .join(format!("{}.rs", file_id));
         let expected = fs::read_to_string(&expected_path).unwrap();
 
-        // Uncomment to keep output
-        /*
-        let output_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("test_samples")
-            .join("output.rs");
-        let f = fs::File::create(output_path).unwrap();
-        std::io::BufWriter::new(f).write_all(output.as_bytes()).unwrap();
-        */
-
         assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn fix_baseline_conservative() {
+        fix_baseline(IdentificationMode::Conservative)
+    }
+
+    #[test]
+    fn fix_baseline_all_get_functions() {
+        fix_baseline(IdentificationMode::AllGetFunctions)
     }
 }

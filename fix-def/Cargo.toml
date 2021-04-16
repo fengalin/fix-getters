@@ -1,6 +1,6 @@
 [package]
 name = "fix-getters-def"
-version = "0.2.1"
+version = "0.2.99"
 authors = ["François Laignel <fengalin@free.fr>"]
 categories = ["development-tools", "command-line-utilities"]
 description = "Fix getters definition by removing the get prefix when applicable"
@@ -18,5 +18,5 @@ stderrlog = "0.5"
 smallvec = "1.6.1"
 syn = { version = "1.0", default-features = false, features = ["parsing", "full", "extra-traits", "visit"] }
 
-rules = { package = "fix-getters-rules", version = "0.2.1" }
-utils = { package = "fix-getters-utils", version = "0.2.1" }
+rules = { package = "fix-getters-rules", path = "../rules" }
+utils = { package = "fix-getters-utils", path = "../utils" }

@@ -31,8 +31,12 @@ deciding whether to apply the new name. `get` functions returning exactly one
 `bool` are also apart since they are usually renamed using an `is` prefix or a
 conjugated form which make the new name suitable in expressions.
 
+By default, all `get` function are renamed. However, users might prefer sticking
+by the definition and only rename getters which actually return a field.
+
 The following rules apply to `get` functions not returning exactly one `bool`.
-They are conservative which might leave behind candidates but it's easier to
+They are enforced by the tools when the `conservative` mode is selected. Note
+that this might leave behind candidates. Use this if you consider it easier to
 manually change these candidates after the automatic pass than searching in the
 automatic changes.
   

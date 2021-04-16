@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::{GetterCollection, Scope, TokenStreamGetterCollector};
+use crate::{GetterCollection, IdentificationMode, Scope, TokenStreamGetterCollector};
 
 /// A generic [`Getter`](crate::Getter)s collector visting documentation.
 ///
@@ -16,6 +16,7 @@ use crate::{GetterCollection, Scope, TokenStreamGetterCollector};
 pub struct DocCodeGetterCollector<P: TokenStreamGetterCollector> {
     code: String,
     state: State,
+    identification_mode: IdentificationMode,
     getter_collection: P::GetterCollection,
     path: PathBuf,
 }
@@ -25,13 +26,18 @@ impl<P: TokenStreamGetterCollector> DocCodeGetterCollector<P> {
     ///
     /// [`Getter`](crate::Getter)s will be added to the provided [`GetterCollection`].
     /// Documentation alias attributes will be discarded.
-    pub fn new(path: &Path, getter_collection: &P::GetterCollection) -> Self {
+    pub fn new(
+        path: &Path,
+        identification_mode: IdentificationMode,
+        getter_collection: &P::GetterCollection,
+    ) -> Self {
         let mut getter_collection = P::GetterCollection::clone(getter_collection);
         getter_collection.disable_doc_alias();
 
         DocCodeGetterCollector {
             code: String::with_capacity(512),
             state: State::None,
+            identification_mode,
             getter_collection,
             path: path.to_owned(),
         }
@@ -85,6 +91,7 @@ impl<P: TokenStreamGetterCollector> DocCodeGetterCollector<P> {
                 &self.path,
                 &Scope::Documentation,
                 &syntax_tree,
+                self.identification_mode,
                 &self.getter_collection,
             ),
             Err(_err) => {

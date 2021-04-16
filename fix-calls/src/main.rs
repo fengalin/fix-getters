@@ -14,6 +14,12 @@ fn main() {
         .author(clap::crate_authors!())
         .about(clap::crate_description!())
         .arg(
+            clap::Arg::with_name("conservative")
+                .short("c")
+                .long("conservative")
+                .help("Be conservative when selecting getter functions"),
+        )
+        .arg(
             clap::Arg::with_name("quiet")
                 .short("q")
                 .long("quiet")
@@ -72,8 +78,13 @@ fn main() {
 
     // Traverse the given crate tree following the rules defined in crate `rules`
     // and apply `fix` on elligible files.
+    let mut fixer = GetterCallFixer::new(if m.is_present("conservative") {
+        IdentificationMode::Conservative
+    } else {
+        IdentificationMode::AllGetFunctions
+    });
     info!("Processing {:?}", path);
-    if let Err(error) = GetterCallFixer.traverse(&path, &output_path) {
+    if let Err(error) = fixer.traverse(&path, &output_path) {
         let _ = error!("{}", error);
         process::exit(1);
     }

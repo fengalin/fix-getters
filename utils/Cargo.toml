@@ -1,6 +1,6 @@
 [package]
 name = "fix-getters-utils"
-version = "0.2.1"
+version = "0.2.99"
 authors = ["François Laignel <fengalin@free.fr>"]
 categories = ["development-tools", "command-line-utilities"]
 description = "Utils for fix-getters"
@@ -13,7 +13,7 @@ edition = "2018"
 [dependencies]
 log = { version = "0.4", optional = true }
 proc-macro2 = { version = "1.0", features = ["span-locations"] }
-rules = { package = "fix-getters-rules", version = "0.2.1" }
+rules = { package = "fix-getters-rules", path = "../rules" }
 syn = { version = "1.0", default-features = false, features = ["parsing", "full", "extra-traits", "visit"] }
 
 [features]

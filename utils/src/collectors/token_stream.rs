@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use crate::{GetterCollection, Scope};
+use crate::{GetterCollection, IdentificationMode, Scope};
 
 /// A [`Getter`](crate::Getter)s collector visting a [`TokenStream`](proc_macro2::TokenStream).
 ///
@@ -24,6 +24,7 @@ pub trait TokenStreamGetterCollector {
         path: &Path,
         scope: &Scope,
         stream: &proc_macro2::TokenStream,
+        identification_mode: IdentificationMode,
         getter_collection: &Self::GetterCollection,
     );
 }

@@ -19,20 +19,28 @@ pub struct StGetterCallCollector<'path> {
     scope_stack: Vec<Rc<RefCell<Scope>>>,
     getter_collection: GetterCallCollection,
     path: &'path Path,
+    identification_mode: IdentificationMode,
     doc_code_collector: DocCodeGetterCollector<TsGetterCallCollector<'path>>,
 }
 
 impl<'path> SyntaxTreeGetterCollector for StGetterCallCollector<'path> {
     type GetterCollection = GetterCallCollection;
 
-    fn collect(path: &Path, syntax_tree: &syn::File, getter_collection: &GetterCallCollection) {
+    fn collect(
+        path: &Path,
+        syntax_tree: &syn::File,
+        identification_mode: IdentificationMode,
+        getter_collection: &GetterCallCollection,
+    ) {
         let mut visitor = StGetterCallCollector {
             getter_collection: GetterCallCollection::clone(getter_collection),
             doc_code_collector: DocCodeGetterCollector::<TsGetterCallCollector>::new(
                 path,
+                identification_mode,
                 &getter_collection,
             ),
             path,
+            identification_mode,
             scope_stack: Vec::new(),
         };
         visitor.visit_file(syntax_tree);
@@ -56,7 +64,7 @@ impl<'path> StGetterCallCollector<'path> {
             }
         };
 
-        if !getter.returns_bool().is_true() {
+        if !getter.returns_bool().is_true() && self.identification_mode.is_conservative() {
             if method_call.turbofish.is_some() {
                 getter::skip(&self.scope(), &getter.name, &GenericTypeParam, getter.line);
                 return;
@@ -90,7 +98,7 @@ impl<'path> StGetterCallCollector<'path> {
                     }
                 };
 
-                if !getter.returns_bool().is_true() {
+                if !getter.returns_bool().is_true() && self.identification_mode.is_conservative() {
                     getter::skip(&self.scope(), &getter.name, &NotAMethod, getter.line);
                     return;
                 }
@@ -138,6 +146,7 @@ impl<'ast, 'path> Visit<'ast> for StGetterCallCollector<'path> {
             self.path,
             &self.scope(),
             &node.tokens,
+            self.identification_mode,
             &self.getter_collection,
         );
         self.pop_scope();

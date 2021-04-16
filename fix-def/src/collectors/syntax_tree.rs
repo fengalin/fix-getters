@@ -18,20 +18,28 @@ pub struct StGetterDefCollector<'path> {
     getter_collection: GetterDefCollection,
     scope_stack: Vec<Rc<RefCell<Scope>>>,
     path: &'path Path,
+    identification_mode: IdentificationMode,
     doc_code_collector: DocCodeGetterCollector<TsGetterDefCollector<'path>>,
 }
 
 impl<'path> SyntaxTreeGetterCollector for StGetterDefCollector<'path> {
     type GetterCollection = GetterDefCollection;
 
-    fn collect(path: &Path, syntax_tree: &syn::File, getter_collection: &GetterDefCollection) {
+    fn collect(
+        path: &Path,
+        syntax_tree: &syn::File,
+        identification_mode: IdentificationMode,
+        getter_collection: &GetterDefCollection,
+    ) {
         let mut visitor = StGetterDefCollector {
             getter_collection: GetterDefCollection::clone(getter_collection),
             doc_code_collector: DocCodeGetterCollector::<TsGetterDefCollector>::new(
                 path,
+                identification_mode,
                 &getter_collection,
             ),
             path,
+            identification_mode,
             scope_stack: Vec::new(),
         };
         visitor.visit_file(syntax_tree);
@@ -61,7 +69,7 @@ impl<'path> StGetterDefCollector<'path> {
             StructImpl(_) | Trait(_) | Macro(_) => true,
             TraitImpl { .. } | Attribute(_) => false,
             _ => {
-                if !returns_bool {
+                if !returns_bool && self.identification_mode.is_conservative() {
                     getter::skip(&self.scope(), &sig.ident.to_string(), &NotAMethod, line);
                     return;
                 }
@@ -70,7 +78,7 @@ impl<'path> StGetterDefCollector<'path> {
         };
         getter.set_needs_doc_alias(needs_doc_alias);
 
-        if !returns_bool {
+        if !returns_bool && self.identification_mode.is_conservative() {
             for param in &sig.generics.params {
                 match param {
                     syn::GenericParam::Lifetime(_) => (),
@@ -172,6 +180,7 @@ impl<'ast, 'path> Visit<'ast> for StGetterDefCollector<'path> {
             self.path,
             &self.scope(),
             &node.tokens,
+            self.identification_mode,
             &self.getter_collection,
         );
         self.pop_scope();

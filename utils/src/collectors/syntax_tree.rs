@@ -1,6 +1,6 @@
 //! A [`Getter`](crate::Getter)s collector visting a [`SyntaxTree`](syn::File).
 
-use crate::GetterCollection;
+use crate::{GetterCollection, IdentificationMode};
 use std::path::Path;
 
 /// A [`Getter`](crate::Getter)s collector visting a [`SyntaxTree`](syn::File).
@@ -16,5 +16,10 @@ pub trait SyntaxTreeGetterCollector: for<'ast> syn::visit::Visit<'ast> {
 
     /// Visits the `syntax_tree` collecting [`Getter`](crate::Getter)s
     /// in the [`GetterCollection`].
-    fn collect(path: &Path, syntax_tree: &syn::File, getter_collection: &Self::GetterCollection);
+    fn collect(
+        path: &Path,
+        syntax_tree: &syn::File,
+        identification_mode: IdentificationMode,
+        getter_collection: &Self::GetterCollection,
+    );
 }
