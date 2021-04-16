@@ -22,7 +22,7 @@ The `rules` apply to:
 
 The initial intent is to comply with Rust [naming conventions for getter methods](https://doc.rust-lang.org/1.0.0/style/style/naming/README.html#getter/setter-methods-%5Brfc-344%5D):
 
-*"A method foo(&self) -> &T for getting the current value of the field."*
+> A method foo(&self) -> &T for getting the current value of the field.
 
 ### General rules
 

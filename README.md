@@ -6,7 +6,7 @@ prefix from getters in existing Rust code.
 Rust [naming conventions for getter methods](https://doc.rust-lang.org/1.0.0/style/style/naming/README.html#getter/setter-methods-%5Brfc-344%5D)
 stipulates to use:
 
-_"A method foo(&self) -> &T for getting the current value of the field."_
+> A method foo(&self) -> &T for getting the current value of the field.
 
 Attempts at removing the `get` prefix automatically or manually proved to be
 suboptimal with large code bases:
