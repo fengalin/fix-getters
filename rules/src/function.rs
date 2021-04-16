@@ -106,6 +106,7 @@ pub static BOOL_FIRST_TOKEN_SUBSTITUTES: Lazy<HashMap<&'static str, &'static str
         first_token_subs.insert("ignore", "ignores");
         first_token_subs.insert("invert", "inverts");
         first_token_subs.insert("mute", "is_muted");
+        first_token_subs.insert("need", "needs");
         first_token_subs.insert("propagate", "propagates");
         first_token_subs.insert("populate", "populates");
         first_token_subs.insert("receive", "receives");
@@ -118,6 +119,7 @@ pub static BOOL_FIRST_TOKEN_SUBSTITUTES: Lazy<HashMap<&'static str, &'static str
         first_token_subs.insert("reveal", "reveals");
         first_token_subs.insert("select", "selects");
         first_token_subs.insert("show", "shows");
+        first_token_subs.insert("shrink", "shrinks");
         first_token_subs.insert("skip", "skips");
         first_token_subs.insert("snap", "snaps");
         first_token_subs.insert("support", "supports");
