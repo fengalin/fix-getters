@@ -23,8 +23,7 @@ cargo install fix-getters-def
 ### From source
 
 ```
-cd fix-getters/fix-def
-cargo install --path .
+cargo install --path fix-def
 ```
 
 ## Usage

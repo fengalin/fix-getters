@@ -20,8 +20,7 @@ cargo install fix-getters-calls
 ### From source
 
 ```
-cd fix-getters/fix-calls
-cargo install --path .
+cargo install --path fix-calls
 ```
 
 ## Usage
