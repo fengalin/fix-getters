@@ -21,6 +21,7 @@
 ///         let _ = $self.multiple_arg(42u64);
 ///         let ret = $self.foo();
 ///         let _ = $self.type_();
+///         let _ = MyType::type_();
 ///         ret
 ///     })
 /// );
@@ -52,6 +53,7 @@ macro_rules! get_via_macro (
         let _ = $self.multiple_arg($self.foo());
         let ret = $self.foo();
         let _ = $self.type_();
+        let _ = MyType::type_();
         ret
     })
 );
