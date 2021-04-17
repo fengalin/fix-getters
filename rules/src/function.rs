@@ -25,11 +25,13 @@ pub static RESERVED: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     reserved.insert("in");
     reserved.insert("mut"); // keep `get_mut` similar to `get`
     reserved.insert("optional"); // keep `get_optional` similar to `get`
+    reserved.insert("or_init"); // keep `get_or_init`
     reserved.insert("owned"); // keep `get_owned` similar to `get`
     reserved.insert("ref"); // keep `get_ref` similar to `get`
     reserved.insert("some"); // keep `get_some` similar to `get`
     reserved.insert("true");
-    reserved.insert("unchecked_mut"); // don't change call-sites: used in various Rust types
+    reserved.insert("unchecked");
+    reserved.insert("unchecked_mut");
     reserved.insert("where");
     reserved.insert("while");
     reserved
