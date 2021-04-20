@@ -95,7 +95,7 @@ dependencies = [
 
 [[package]]
 name = "fix-getters-rules"
-version = "0.2.99"
+version = "0.3.0"
 dependencies = [
  "once_cell",
 ]
