@@ -68,11 +68,11 @@ dependencies = [
 
 [[package]]
 name = "fix-getters-calls"
-version = "0.2.99"
+version = "0.3.0"
 dependencies = [
  "clap",
  "fix-getters-rules 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "fix-getters-utils",
+ "fix-getters-utils 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "proc-macro2",
  "stderrlog",
@@ -81,11 +81,11 @@ dependencies = [
 
 [[package]]
 name = "fix-getters-def"
-version = "0.2.99"
+version = "0.3.0"
 dependencies = [
  "clap",
  "fix-getters-rules 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "fix-getters-utils",
+ "fix-getters-utils 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "proc-macro2",
  "smallvec",
@@ -112,6 +112,18 @@ dependencies = [
 [[package]]
 name = "fix-getters-utils"
 version = "0.3.0"
+dependencies = [
+ "fix-getters-rules 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log",
+ "proc-macro2",
+ "syn",
+]
+
+[[package]]
+name = "fix-getters-utils"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c77aa4f5a7c2577a86d3ece4906c56fc3343360317d2ad1e625c2a0e0f4b1c6"
 dependencies = [
  "fix-getters-rules 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",

@@ -1,6 +1,6 @@
 [package]
 name = "fix-getters-calls"
-version = "0.2.99"
+version = "0.3.0"
 authors = ["François Laignel <fengalin@free.fr>"]
 categories = ["development-tools", "command-line-utilities"]
 description = "Fix getters call sites by removing the get prefix when applicable"
@@ -18,4 +18,4 @@ stderrlog = "0.5"
 syn = { version = "1.0", default-features = false, features = ["parsing", "full", "extra-traits", "visit"] }
 
 rules = { package = "fix-getters-rules", version = "0.3.0" }
-utils = { package = "fix-getters-utils", path = "../utils" }
+utils = { package = "fix-getters-utils", version = "0.3.0" }
