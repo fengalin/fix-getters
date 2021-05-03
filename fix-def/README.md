@@ -62,10 +62,17 @@ conservative approach based on the `get` function signature. By default, all
 See the [workspace documentation](../README.md#get-functions-selection) for more
 details about the conservative identification mode.
 
-### Adding `doc-alias` attributes
+### doc alias attributes
 
-Use the `--doc-alias` option (short `-d`) if you want to generate a `doc-alias`
-attribute with the original name for the renamed functions.
+By default, `fix-getters-def` adds a doc alias attribute with the original name
+for the renamed functions.
+
+Use the `--no-doc-aliases` option (short `-n`) if you don't want to generate the
+doc alias attributes.
+
+Prior to version `0.3.1`, doc aliases were added only if the `--doc-alias`
+option (short `-d`) was provided. This option is now deprecated and will be
+removed in the next major version.
 
 ## Uninstall
 

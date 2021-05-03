@@ -1,6 +1,6 @@
 [package]
 name = "fix-getters-def"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["François Laignel <fengalin@free.fr>"]
 categories = ["development-tools", "command-line-utilities"]
 description = "Fix getters definition by removing the get prefix when applicable"

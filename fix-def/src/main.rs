@@ -20,10 +20,18 @@ fn main() {
         .author(clap::crate_authors!())
         .about(clap::crate_description!())
         .arg(
+            clap::Arg::with_name("no-doc-aliases")
+                .short("n")
+                .long("no-doc-aliases")
+                .help("Don't had doc aliases to the renamed functions"),
+        )
+        // Deprecated since 0.3.1.
+        // FIXME remove in next major version.
+        .arg(
             clap::Arg::with_name("doc-alias")
                 .short("d")
                 .long("doc-alias")
-                .help("Had a doc alias to the renamed functions"),
+                .help("Deprecated. This is the default. Had a doc alias to the renamed functions"),
         )
         .arg(
             clap::Arg::with_name("conservative")
@@ -93,10 +101,10 @@ fn main() {
         } else {
             IdentificationMode::AllGetFunctions
         },
-        if m.is_present("doc-alias") {
-            DocAliasMode::Generate
-        } else {
+        if m.is_present("no-doc-aliases") {
             DocAliasMode::Discard
+        } else {
+            DocAliasMode::Generate
         },
     );
     info!("Processing {:?}", path);
