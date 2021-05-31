@@ -1,4 +1,5 @@
 **/target
+.idea
 
 fix-calls/test_samples/output*.rs
 fix-def/test_samples/output*.rs
