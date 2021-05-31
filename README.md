@@ -6,7 +6,7 @@ prefix from getters in existing Rust code.
 Rust [naming conventions for getter methods](https://doc.rust-lang.org/1.0.0/style/style/naming/README.html#getter/setter-methods-%5Brfc-344%5D)
 stipulates to use:
 
-> A method foo(&self) -> &T for getting the current value of the field.
+> A method `foo(&self) -> &T` for getting the current value of the field.
 
 Attempts at removing the `get` prefix automatically or manually proved to be
 suboptimal with large code bases:
@@ -16,8 +16,8 @@ suboptimal with large code bases:
 * Removing the `get` prefix automatically can result in invalid code.
   Ex. `get_mut`, `get_loop`, ...
 * Getters returning a `bool` should usually use the form `is_suffix`, but
-  sometimes, we want to use verbs. E.g.: `if element.emits_eos()`.
-* Most `get_*` functions returning a `bool` and which actually perform some sort
+  sometimes, we just want to conjugate a verb. E.g.: `if element.emits_eos()`.
+* Most `get_*` functions that return a `bool` and which actually perform some sort
   of computation can still be renamed as `is_suffix`, since it makes sense in
   expressions such as `if context_a.is_same_as(&context_b)`.
 * Then it's necessary to update the getters call sites and we have to guess
@@ -25,13 +25,13 @@ suboptimal with large code bases:
 
 ## Get functions selection
 
-Not all `get` functions should be renamed. Besides the [`rules`](rules/README.md#function-name-rules)
+Not all `get` functions should be renamed. Besides the [`rules`](https://github.com/fengalin/fix-getters/blob/0.3.2/rules/README.md#function-name-rules)
 enforced while renaming the function, other criteria are observed before
 deciding whether to apply the new name. `get` functions returning exactly one
-`bool` are also apart since they are usually renamed using an `is` prefix or a
-conjugated form which make the new name suitable in expressions.
+`bool` require special attention since they are usually renamed using an `is`
+prefix or a conjugated verb which make the new name suitable in expressions.
 
-By default, all `get` function are renamed. However, users might prefer sticking
+By default, all `get` functions are renamed. However, users might prefer sticking
 by the definition and only rename getters which actually return a field.
 
 The following rules apply to `get` functions not returning exactly one `bool`.
@@ -39,27 +39,32 @@ They are enforced by the tools when the `conservative` mode is selected. Note
 that this might leave behind candidates. Use this if you consider it easier to
 manually change these candidates after the automatic pass than searching in the
 automatic changes.
-  
+
 * The function is a method. This excludes standalone functions or associated
   functions.
 * The function accepts no arguments besides `&['_][mut] self`. The methods which
   accept other arguments are not `getter`s in the sense that they usually don't
-  return current value of a field and renaming them would harm the semantic.
-  Functions consuming `self` were also considered not eligible for renaming.
+  return current value of a field. Similarly, functions consuming `self` are not
+  eligible for `get` removal.
 * The function accepts no type parameter (lifetimes are accepted). The reason is
   the same as for functions accepting multiple arguments (see above).
 
-These rules are implemented in the [fix-def](fix-def/) & [fix-calls](fix-calls/)
+These rules are implemented in the [fix-def](https://github.com/fengalin/fix-getters/tree/0.3.2/fix-def)
+& [fix-calls](https://github.com/fengalin/fix-getters/tree/0.3.2/fix-calls)
 tools and apply to regular code, macros and documentation code.
 
 ## Packages
 
 This workspace contains the following packages:
 
-* [rules](rules/): rules to apply during the update process.
-* [fix-def](fix-def/): a tool to update the `get` functions definition.
-* [fix-calls](fix-calls/): a tool to update the `get` functions call sites.
-* [utils](utils/): utilities and types common to the `fix-getters` tools.
+* [rules](https://github.com/fengalin/fix-getters/tree/0.3.2/rules):
+  rules to apply during the update process.
+* [fix-def](https://github.com/fengalin/fix-getters/tree/0.3.2/fix-def):
+  a tool to update the `get` functions definition.
+* [fix-calls](https://github.com/fengalin/fix-getters/tree/0.3.2/fix-calls):
+  a tool to update the `get` functions call sites.
+* [utils](https://github.com/fengalin/fix-getters/tree/0.3.2/utils):
+  utilities and types common to the `fix-getters` tools.
 
 ## LICENSE
 

@@ -1,10 +1,10 @@
 # fix-getters-calls
 
 This package is a tool to fix getters call sites by removing the `get_` prefix
-according to rules defined in [`rules`](../rules/).
+according to [`rules`](https://github.com/fengalin/fix-getters/blob/0.3.2/rules/README.md#function-name-rules).
 
-See the [workspace documentation](../README.md) for more details about
-`fix-getters`.
+See the [workspace documentation](https://github.com/fengalin/fix-getters/blob/0.3.2/README.md)
+for more details on `fix-getters`.
 
 ## Install
 
@@ -38,7 +38,7 @@ fix-getters-calls
 cargo fmt
 ```
 
-Note that the getters definition won't be changed. Use [fix-def](../fix-def/)
+Note that the getters definition won't be changed. Use [fix-def](https://github.com/fengalin/fix-getters/tree/0.3.2/fix-def)
 for that.
 
 To test the result first, you can run:
@@ -51,18 +51,18 @@ The project files won't be changed: modified files will be generated under
 `_OUTPUT_PATH_`. Note however that only the modified files are generated, so
 you won't be able to run `cargo fmt`.
 
-### Conservative get function identification 
+### Conservative get function identification
 
 Use the `--conservative` option (short `-c`) if you prefer applying a
 conservative approach based on the `get` function signature. By default, all
 `get` functions are renamed.
 
-See the [workspace documentation](../README.md#get-functions-selection) for more
-details about the conservative identification mode.
+See the [workspace documentation](https://github.com/fengalin/fix-getters/blob/0.3.2/README.md#get-functions-selection)
+for more details on the conservative identification mode.
 
 ## Uninstall
 
-To uninstall, launch the following command:
+To uninstall, use:
 
 ```
 cargo uninstall fix-getters-calls
